@@ -3381,7 +3381,6 @@ namespace ts {
         /* @internal */
         isolatedSignatureType?: ObjectType; // A manufactured type that just contains the signature for purposes of signature comparison
         /* @internal */
-        //typePredicate?: TypePredicate;
         resolvedTypePredicate?: TypePredicate | undefined | "pending";
         /* @internal */
         instantiations?: Map<Signature>;    // Generic signature instantiation cache

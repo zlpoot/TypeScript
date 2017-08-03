@@ -3075,7 +3075,7 @@ namespace ts {
         }
 
         function literalTypeToString(type: LiteralType) {
-            return type.flags & TypeFlags.StringLiteral ? '"' + escapeString((<StringLiteralType>type).value) + '"' : "" + (<NumberLiteralType>type).value;
+            return type.flags & TypeFlags.StringLiteral ? `"${escapeString((<StringLiteralType>type).value)}"` : "" + (<NumberLiteralType>type).value;
         }
 
         function getNameOfSymbol(symbol: Symbol): string {
@@ -6253,7 +6253,7 @@ namespace ts {
             if (isExternalModuleNameRelative(moduleName)) {
                 return undefined;
             }
-            const symbol = getSymbol(globals, '"' + moduleName + '"' as __String, SymbolFlags.ValueModule);
+            const symbol = getSymbol(globals, `"${moduleName}"` as __String, SymbolFlags.ValueModule);
             // merged symbol is module declaration symbol combined with all augmentations
             return symbol && withAugmentations ? getMergedSymbol(symbol) : symbol;
         }
@@ -6537,20 +6537,17 @@ namespace ts {
             }
         }
 
-        function hasTypePredicate(signature: Signature): boolean {
+        function signatureHasTypePredicate(signature: Signature): boolean {
             return signature.resolvedTypePredicate !== undefined;
         }
 
         function getTypePredicateOfSignature(signature: Signature): TypePredicate {
             if (signature.resolvedTypePredicate === "pending") {
-                Debug.assert(hasTypePredicate(signature.target)); //kill
-                //need pushTypeResolution???
                 signature.resolvedTypePredicate = cloneTypePredicate(getTypePredicateOfSignature(signature.target), signature.mapper);
             }
             return signature.resolvedTypePredicate;
         }
 
-        //do something like this for type predicate?
         function getReturnTypeOfSignature(signature: Signature): Type {
             if (!signature.resolvedReturnType) {
                 if (!pushTypeResolution(signature, TypeSystemPropertyName.ResolvedReturnType)) {
@@ -8076,7 +8073,6 @@ namespace ts {
 
         function instantiateSignature(signature: Signature, mapper: TypeMapper, eraseTypeParameters?: boolean): Signature {
             let freshTypeParameters: TypeParameter[];
-            //let freshTypePredicate: TypePredicate;
             if (signature.typeParameters && !eraseTypeParameters) {
                 // First create a fresh set of type parameters, then include a mapping from the old to the
                 // new type parameters in the mapper function. Finally store this mapper in the new type
@@ -8087,15 +8083,15 @@ namespace ts {
                     tp.mapper = mapper;
                 }
             }
-            //if (signature.typePredicate) {
-            //    freshTypePredicate = cloneTypePredicate(signature.typePredicate, mapper); //Doesn't just clone, also instantiates it!
-            //}
+            // Don't compute resolvedReturnType and resolvedTypePredicate now
+            // because using `mapper` now could trigger inferences to become fixed. (See `createInferenceContext`.)
             const result = createSignature(signature.declaration, freshTypeParameters,
                 signature.thisParameter && instantiateSymbol(signature.thisParameter, mapper),
                 instantiateList(signature.parameters, mapper, instantiateSymbol),
-                //doc: This is undefined now, but set in `getReturnTypeOfSignature`.
+                // This will be lazily set in `getReturnTypeOfSignature`.
                 /*resolvedReturnType*/ undefined, //Then shouldn't we do te same?
-                /*resolvedTypePredicate*/ hasTypePredicate(signature) ? "pending" : undefined,
+                // If "pending", this will be lazily set in `getTypePredicateOfSignature`.
+                /*resolvedTypePredicate*/ signatureHasTypePredicate(signature) ? "pending" : undefined,
                 signature.minArgumentCount, signature.hasRestParameter, signature.hasLiteralTypes);
             result.target = signature;
             result.mapper = mapper;
@@ -8522,7 +8518,7 @@ namespace ts {
                 // similar to return values, callback parameters are output positions. This means that a Promise<T>,
                 // where T is used only in callback parameter positions, will be co-variant (as opposed to bi-variant)
                 // with respect to T.
-                const callbacks = sourceSig && targetSig && !hasTypePredicate(sourceSig) && !hasTypePredicate(targetSig) &&
+                const callbacks = sourceSig && targetSig && !signatureHasTypePredicate(sourceSig) && !signatureHasTypePredicate(targetSig) &&
                     (getFalsyFlags(sourceType) & TypeFlags.Nullable) === (getFalsyFlags(targetType) & TypeFlags.Nullable);
                 const related = callbacks ?
                     compareSignaturesRelated(targetSig, sourceSig, /*checkAsCallback*/ true, /*ignoreReturnTypes*/ false, reportErrors, errorReporter, compareTypes) :
@@ -10566,7 +10562,7 @@ namespace ts {
 
                 const sourceTypePredicate = getTypePredicateOfSignature(source);
                 const targetTypePredicate = getTypePredicateOfSignature(target);
-                if (sourceTypePredicate && targetTypePredicate && sourceTypePredicate.kind === targetTypePredicate.kind) { //TODO: what if they are for different identifiers?
+                if (sourceTypePredicate && targetTypePredicate && sourceTypePredicate.kind === targetTypePredicate.kind) {
                     inferFromTypes(sourceTypePredicate.type, targetTypePredicate.type);
                 }
                 else {
@@ -10672,7 +10668,7 @@ namespace ts {
                 if (constraint) {
                     const instantiatedConstraint = instantiateType(constraint, context);
                     if (!isTypeAssignableTo(inferredType, getTypeWithThisArgument(instantiatedConstraint, inferredType))) {
-                        inference.inferredType = inferredType = instantiatedConstraint; //TODO: just move `inference.inferredType` to below here to avoid setting twice?
+                        inference.inferredType = inferredType = instantiatedConstraint;
                     }
                 }
             }
@@ -11337,11 +11333,11 @@ namespace ts {
         function getMaybeTypePredicate(node: CallExpression) {
             if (node.expression.kind !== SyntaxKind.SuperKeyword) {
                 const funcType = checkNonNullExpression(node.expression);
-                if (funcType !== silentNeverType) { //can't we just let getSignaturesOfType fail for that?
+                if (funcType !== silentNeverType) {
                     const apparentType = getApparentType(funcType);
                     if (apparentType !== unknownType) {
                         const callSignatures = getSignaturesOfType(apparentType, SignatureKind.Call);
-                        return some(callSignatures, sig => hasTypePredicate(sig));
+                        return some(callSignatures, sig => signatureHasTypePredicate(sig));
                     }
                 }
             }
@@ -15649,7 +15645,7 @@ namespace ts {
             // For a decorator, no arguments are susceptible to contextual typing due to the fact
             // decorators are applied to a declaration by the emitter, and not to an expression.
             let excludeArgument: boolean[];
-            let excludeCount = 0; //= # of context sensitive arguments
+            let excludeCount = 0;
             if (!isDecorator) {
                 // We do not need to call `getEffectiveArgumentCount` here as it only
                 // applies when calculating the number of arguments for a decorator.
@@ -15741,7 +15737,7 @@ namespace ts {
                     min = Math.min(min, getMinTypeArgumentCount(sig.typeParameters));
                     max = Math.max(max, length(sig.typeParameters));
                 }
-                const paramCount = min < max ? min.toString() + "-" + max.toString() : min;
+                const paramCount = min < max ? `${min}-${max}` : min;
                 diagnostics.add(createDiagnosticForNode(node, Diagnostics.Expected_0_type_arguments_but_got_1, paramCount, typeArguments.length));
             }
             else if (args) {
@@ -15754,7 +15750,7 @@ namespace ts {
                 const hasRestParameter = some(signatures, sig => sig.hasRestParameter);
                 const hasSpreadArgument = getSpreadArgumentIndex(args) > -1;
                 const paramCount = hasRestParameter ? min :
-                    min < max ? min.toString() + "-" + max.toString() :
+                    min < max ? `${min}-${max}` :
                     min;
                 const argCount = args.length - (hasSpreadArgument ? 1 : 0);
                 const error = hasRestParameter && hasSpreadArgument ? Diagnostics.Expected_at_least_0_arguments_but_got_a_minimum_of_1 :
@@ -16772,7 +16768,7 @@ namespace ts {
             Debug.assert(node.kind !== SyntaxKind.MethodDeclaration || isObjectLiteralMethod(node));
 
             // Grammar checking
-            const hasGrammarError = checkGrammarFunctionLikeDeclaration(node); //can we do this *after* the checkMode check?
+            const hasGrammarError = checkGrammarFunctionLikeDeclaration(node);
             if (!hasGrammarError && node.kind === SyntaxKind.FunctionExpression) {
                 checkGrammarForGenerator(node);
             }
@@ -16796,7 +16792,7 @@ namespace ts {
                     links.flags |= NodeCheckFlags.ContextChecked;
                     if (contextualSignature) {
                         const signature = getSignaturesOfType(type, SignatureKind.Call)[0];
-                        if (isContextSensitive(node)) { //when would this not be true?
+                        if (isContextSensitive(node)) {
                             const contextualMapper = getContextualMapper(node);
                             if (checkMode === CheckMode.Inferential) {
                                 inferFromAnnotatedParameters(signature, contextualSignature, contextualMapper);
@@ -20125,7 +20121,7 @@ namespace ts {
                 return;
             }
             const symbol = getSymbolOfNode(node);
-            const type = convertAutoToAny(getTypeOfVariableOrParameterOrProperty(symbol)); //Could this be done lazily? It looks like we often don't use it.
+            const type = convertAutoToAny(getTypeOfVariableOrParameterOrProperty(symbol));
             if (node === symbol.valueDeclaration) {
                 // Node is the primary declaration of the symbol, just validate the initializer
                 // Don't validate for-in initializer as it is already an error
@@ -24916,7 +24912,7 @@ namespace ts {
                 }
                 if (diagnosticMessage) {
                     const withMinus = isPrefixUnaryExpression(node.parent) && node.parent.operator === SyntaxKind.MinusToken;
-                    const literal = (withMinus ? "-" : "") + "0o" + node.text;
+                    const literal = `${withMinus ? "-" : ""}0o${node.text}`;
                     return grammarErrorOnNode(withMinus ? node.parent : node, diagnosticMessage, literal);
                 }
             }
