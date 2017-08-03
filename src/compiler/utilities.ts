@@ -921,7 +921,7 @@ namespace ts {
         });
     }
 
-    export function getContainingFunction(node: Node): FunctionLike {
+    export function getContainingFunction(node: Node): FunctionLike { //use findAncestore
         while (true) {
             node = node.parent;
             if (!node || isFunctionLike(node)) {
@@ -930,7 +930,7 @@ namespace ts {
         }
     }
 
-    export function getContainingClass(node: Node): ClassLikeDeclaration {
+    export function getContainingClass(node: Node): ClassLikeDeclaration { //use findAncestor
         while (true) {
             node = node.parent;
             if (!node || isClassLike(node)) {

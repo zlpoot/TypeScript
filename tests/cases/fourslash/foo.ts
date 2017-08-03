@@ -5,8 +5,4 @@
 ////declare function f<U>(predicate: (t: {}) => t is U): U;
 ////const y = /**/f((n): n is number => true);
 
-verify.quickInfoAt("", "function f<{}>(predicate: (t: {}) => t is {}): {}");
-
-console.log("First succeeded...");
-
-verify.quickInfoAt("", "function f<{}>(predicate: (t: {}) => t is {}): {}");
+verify.quickInfoAt("", "function f<number>(predicate: (t: {}) => t is number): number");
