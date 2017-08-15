@@ -236,7 +236,7 @@ namespace ts {
         const unionTypes = createMap<UnionType>();
         const intersectionTypes = createMap<IntersectionType>();
         const literalTypes = createMap<LiteralType>();
-        const indexedAccessTypes = createMap<IndexedAccessType>();
+        const indexedAccessTypes = idPairMap<IndexedAccessType>();
         const evolvingArrayTypes: EvolvingArrayType[] = [];
 
         const unknownSymbol = createSymbol(SymbolFlags.Property, "unknown" as __String);
@@ -468,11 +468,11 @@ namespace ts {
             IntrinsicClassAttributes: "IntrinsicClassAttributes" as __String
         };
 
-        const subtypeRelation = createMap<RelationComparisonResult>();
-        const assignableRelation = createMap<RelationComparisonResult>();
-        const comparableRelation = createMap<RelationComparisonResult>();
-        const identityRelation = createMap<RelationComparisonResult>();
-        const enumRelation = createMap<boolean>();
+        const subtypeRelation = idPairMap<RelationComparisonResult>();
+        const assignableRelation = idPairMap<RelationComparisonResult>();
+        const comparableRelation = idPairMap<RelationComparisonResult>();
+        const identityRelation = idPairMap<RelationComparisonResult>();
+        const enumRelation = idPairMap<boolean>();
 
         // This is for caching the result of getSymbolDisplayBuilder. Do not access directly.
         let _displayBuilder: SymbolDisplayBuilder;
@@ -1939,6 +1939,7 @@ namespace ts {
         function createType(flags: TypeFlags): Type {
             const result = new Type(checker, flags);
             typeCount++;
+            Debug.assert(typeCount < (2 << 16));
             result.id = typeCount;
             return result;
         }
@@ -7692,10 +7693,10 @@ namespace ts {
                     return objectType;
                 }
                 // Defer the operation by creating an indexed access type.
-                const id = objectType.id + "," + indexType.id;
-                let type = indexedAccessTypes.get(id);
+                const id = idPairKey(objectType.id, indexType.id);
+                let type = indexedAccessTypes[id];
                 if (!type) {
-                    indexedAccessTypes.set(id, type = createIndexedAccessType(objectType, indexType));
+                    indexedAccessTypes[id] = type = createIndexedAccessType(objectType, indexType);
                 }
                 return type;
             }
@@ -8725,13 +8726,13 @@ namespace ts {
             if (sourceSymbol === targetSymbol) {
                 return true;
             }
-            const id = getSymbolId(sourceSymbol) + "," + getSymbolId(targetSymbol);
-            const relation = enumRelation.get(id);
+            const id = idPairKey(getSymbolId(sourceSymbol), getSymbolId(targetSymbol));
+            const relation = enumRelation[id];
             if (relation !== undefined) {
                 return relation;
             }
             if (sourceSymbol.escapedName !== targetSymbol.escapedName || !(sourceSymbol.flags & SymbolFlags.RegularEnum) || !(targetSymbol.flags & SymbolFlags.RegularEnum)) {
-                enumRelation.set(id, false);
+                enumRelation[id] = false;
                 return false;
             }
             const targetEnumType = getTypeOfSymbol(targetSymbol);
@@ -8743,16 +8744,16 @@ namespace ts {
                             errorReporter(Diagnostics.Property_0_is_missing_in_type_1, unescapeLeadingUnderscores(property.escapedName),
                                 typeToString(getDeclaredTypeOfSymbol(targetSymbol), /*enclosingDeclaration*/ undefined, TypeFormatFlags.UseFullyQualifiedType));
                         }
-                        enumRelation.set(id, false);
+                        enumRelation[id] = false;
                         return false;
                     }
                 }
             }
-            enumRelation.set(id, true);
+            enumRelation[id] = true;
             return true;
         }
 
-        function isSimpleTypeRelatedTo(source: Type, target: Type, relation: Map<RelationComparisonResult>, errorReporter?: ErrorReporter) {
+        function isSimpleTypeRelatedTo(source: Type, target: Type, relation: IdPairMap<RelationComparisonResult>, errorReporter?: ErrorReporter) {
             const s = source.flags;
             const t = target.flags;
             if (t & TypeFlags.Never) return false;
@@ -8787,7 +8788,7 @@ namespace ts {
             return false;
         }
 
-        function isTypeRelatedTo(source: Type, target: Type, relation: Map<RelationComparisonResult>) {
+        function isTypeRelatedTo(source: Type, target: Type, relation: IdPairMap<RelationComparisonResult>) {
             if (source.flags & TypeFlags.StringOrNumberLiteral && source.flags & TypeFlags.FreshLiteral) {
                 source = (<LiteralType>source).regularType;
             }
@@ -8798,8 +8799,8 @@ namespace ts {
                 return true;
             }
             if (source.flags & TypeFlags.Object && target.flags & TypeFlags.Object) {
-                const id = relation !== identityRelation || source.id < target.id ? source.id + "," + target.id : target.id + "," + source.id;
-                const related = relation.get(id);
+                const id = relation !== identityRelation || source.id < target.id ? idPairKey(source.id, target.id) : idPairKey(target.id, source.id);
+                const related = relation[id];
                 if (related !== undefined) {
                     return related === RelationComparisonResult.Succeeded;
                 }
@@ -8823,13 +8824,13 @@ namespace ts {
         function checkTypeRelatedTo(
             source: Type,
             target: Type,
-            relation: Map<RelationComparisonResult>,
+            relation: IdPairMap<RelationComparisonResult>,
             errorNode: Node,
             headMessage?: DiagnosticMessage,
             containingMessageChain?: DiagnosticMessageChain): boolean {
 
             let errorInfo: DiagnosticMessageChain;
-            let maybeKeys: string[];
+            let maybeKeys: IdPairKey[];
             let sourceStack: Type[];
             let targetStack: Type[];
             let maybeCount = 0;
@@ -9200,13 +9201,13 @@ namespace ts {
                 if (overflow) {
                     return Ternary.False;
                 }
-                const id = relation !== identityRelation || source.id < target.id ? source.id + "," + target.id : target.id + "," + source.id;
-                const related = relation.get(id);
+                const id = relation !== identityRelation || source.id < target.id ? idPairKey(source.id, target.id) : idPairKey(target.id, + source.id);
+                const related = relation[id];
                 if (related !== undefined) {
                     if (reportErrors && related === RelationComparisonResult.Failed) {
                         // We are elaborating errors and the cached result is an unreported failure. Record the result as a reported
                         // failure and continue computing the relation such that errors get reported.
-                        relation.set(id, RelationComparisonResult.FailedAndReported);
+                        relation[id] = RelationComparisonResult.FailedAndReported;
                     }
                     else {
                         return related === RelationComparisonResult.Succeeded ? Ternary.True : Ternary.False;
@@ -9245,7 +9246,7 @@ namespace ts {
                     if (result === Ternary.True || depth === 0) {
                         // If result is definitely true, record all maybe keys as having succeeded
                         for (let i = maybeStart; i < maybeCount; i++) {
-                            relation.set(maybeKeys[i], RelationComparisonResult.Succeeded);
+                            relation[maybeKeys[i]] = RelationComparisonResult.Succeeded;
                         }
                         maybeCount = maybeStart;
                     }
@@ -9253,7 +9254,7 @@ namespace ts {
                 else {
                     // A false result goes straight into global cache (when something is false under
                     // assumptions it will also be false without assumptions)
-                    relation.set(id, reportErrors ? RelationComparisonResult.FailedAndReported : RelationComparisonResult.Failed);
+                    relation[id] = reportErrors ? RelationComparisonResult.FailedAndReported : RelationComparisonResult.Failed;
                     maybeCount = maybeStart;
                 }
                 return result;
@@ -15282,7 +15283,7 @@ namespace ts {
          * @param relation a relationship to check parameter and argument type
          * @param excludeArgument
          */
-        function checkApplicableSignatureForJsxOpeningLikeElement(node: JsxOpeningLikeElement, signature: Signature, relation: Map<RelationComparisonResult>) {
+        function checkApplicableSignatureForJsxOpeningLikeElement(node: JsxOpeningLikeElement, signature: Signature, relation: IdPairMap<RelationComparisonResult>) {
             // JSX opening-like element has correct arity for stateless-function component if the one of the following condition is true:
             //      1. callIsIncomplete
             //      2. attributes property has same number of properties as the parameter object type.
@@ -15313,7 +15314,7 @@ namespace ts {
             node: CallLikeExpression,
             args: ReadonlyArray<Expression>,
             signature: Signature,
-            relation: Map<RelationComparisonResult>,
+            relation: IdPairMap<RelationComparisonResult>,
             excludeArgument: boolean[],
             reportErrors: boolean) {
             if (isJsxOpeningLikeElement(node)) {
@@ -15874,7 +15875,7 @@ namespace ts {
 
             return resolveErrorCall(node);
 
-            function chooseOverload(candidates: Signature[], relation: Map<RelationComparisonResult>, signatureHelpTrailingComma = false) {
+            function chooseOverload(candidates: Signature[], relation: IdPairMap<RelationComparisonResult>, signatureHelpTrailingComma = false) {
                 candidateForArgumentError = undefined;
                 candidateForTypeArgumentError = undefined;
 
@@ -25091,5 +25092,19 @@ namespace ts {
             default:
                 return false;
         }
+    }
+
+    //mv
+    interface IdPairMap<T> {
+        [key: number]: T;
+    }
+    function idPairMap<T>(): IdPairMap<T> {
+        return [] as any as IdPairMap<T>;
+    }
+    const maxId = 2 << 16;
+    function idPairKey(id1: number, id2: number): number {
+        Debug.assert((id1 & maxId) === id1);
+        Debug.assert((id2 & maxId) === id2);
+        return (id1 << 16) | id2;
     }
 }
