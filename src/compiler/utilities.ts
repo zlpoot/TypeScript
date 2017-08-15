@@ -1706,15 +1706,6 @@ namespace ts {
         return false;
     }
 
-    export function isInAmbientContext(node: Node): boolean {
-        return !!(node.flags & NodeFlags.Ambient);
-    }
-
-    export function isTokenInAmbientContext(token: Node): boolean {
-        //doc: tokens don't get nodeflags set...
-        return isInAmbientContext(token.parent);
-    }
-
     // True if the given identifier, string literal, or number literal is the name of a declaration node
     export function isDeclarationName(name: Node): boolean {
         switch (name.kind) {
