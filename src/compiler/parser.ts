@@ -5092,12 +5092,6 @@ namespace ts {
             const decorators = parseDecorators();
             const modifiers = parseModifiers();
             if (modifiers && modifiers.some(m => m.kind === SyntaxKind.DeclareKeyword)) {
-                //TODO:REMOVE, just for compat with old.
-                //Set all the modifiers to `ambient`, because that's how it worked before.
-                for (const mod of modifiers) {
-                    mod.flags |= NodeFlags.Ambient;
-                }
-
                 return doInsideOfContext(NodeFlags.Ambient, () => parseDeclarationWorker(fullStart, decorators, modifiers));
             }
             else {

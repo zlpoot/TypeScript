@@ -31,7 +31,7 @@ namespace ts.BreakpointResolver {
         }
 
         // Cannot set breakpoint in ambient declarations
-        if (isInAmbientContextForToken(tokenAtLocation)) {
+        if (isTokenInAmbientContext(tokenAtLocation)) {
             return undefined;
         }
 
