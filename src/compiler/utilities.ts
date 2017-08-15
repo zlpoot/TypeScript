@@ -1707,6 +1707,41 @@ namespace ts {
     }
 
     export function isInAmbientContext(node: Node): boolean {
+        const newResult = !!(node.flags & NodeFlags.Ambient);
+        const oldResult = isInAmbientContextOld(node);
+        if (newResult !== oldResult) {
+            const anc = getAmbientAncestor(node)!;
+            switch (anc.kind) {
+                case SyntaxKind.Parameter:
+                case SyntaxKind.PropertyDeclaration:
+                case SyntaxKind.Constructor:
+                case SyntaxKind.GetAccessor:
+                case SyntaxKind.MethodDeclaration:
+                    //don't care, it's illegal here anyway
+                    break;
+                default:
+                    //if (ts.isToken(node)) break; //Don't care
+                    Debug.fail((ts as any).SyntaxKind[anc.kind]);
+            }
+        }
+        return newResult;
+    }
+
+    export function isInAmbientContextForToken(node: Node): boolean {
+        return isInAmbientContextOld(node); //TODO: find a non-token (should be first parent) and call `isInAmbientContext`, should be the same...
+    }
+
+    function getAmbientAncestor(node: Node): Node | undefined {
+        while (node) {
+            if (hasModifier(node, ModifierFlags.Ambient) || (node.kind === SyntaxKind.SourceFile && (node as SourceFile).isDeclarationFile)) {
+                return node;
+            }
+            node = node.parent;
+        }
+        return undefined;
+    }
+
+    function isInAmbientContextOld(node: Node) {
         while (node) {
             if (hasModifier(node, ModifierFlags.Ambient) || (node.kind === SyntaxKind.SourceFile && (node as SourceFile).isDeclarationFile)) {
                 return true;
