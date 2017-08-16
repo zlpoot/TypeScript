@@ -25101,10 +25101,15 @@ namespace ts {
     function idPairMap<T>(): IdPairMap<T> {
         return [] as any as IdPairMap<T>;
     }
-    const maxId = 2 << 16;
-    function idPairKey(id1: number, id2: number): number {
-        Debug.assert((id1 & maxId) === id1);
-        Debug.assert((id2 & maxId) === id2);
+    const maxIdMask = (2 << 16) - 1;
+    function idPairKey(id1: number, id2: number): IdPairKey {
+        if ((id1 & maxIdMask) !== id1) {
+            Debug.fail(`Too high id: ${id1}`);
+        }
+        if ((id2 & maxIdMask) !== id2) {
+            Debug.fail(`Too high id: ${id2}`);
+        }
         return (id1 << 16) | id2;
     }
+    type IdPairKey = number;
 }
