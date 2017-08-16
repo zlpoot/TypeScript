@@ -19794,13 +19794,11 @@ namespace ts {
                 case SyntaxKind.VariableDeclaration:
                     return isForInOrOfStatement(declaration.parent.parent) && startsWithUnderscore(localName);
                 case SyntaxKind.BindingElement:
-                    if (!(declaration as BindingElement).propertyName && isObjectBindingPattern(declaration.parent)) {
+                    if (isObjectBindingPattern(declaration.parent)) {
                         const lastElement = lastOrUndefined(declaration.parent.elements)!;
                         return lastElement !== declaration && !!lastElement.dotDotDotToken;
                     }
-                    else {
-                        return startsWithUnderscore(localName);
-                    }
+                    // falls through
                 default:
                     return false;
             }

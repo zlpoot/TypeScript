@@ -10,8 +10,8 @@ function one() {
 
 function two() {
     const foo = { a: 1, b: 2 };
-    // 'blah' is declared but never used
-    const {a: blah, ...bar} = foo;
+    // '_' is declared but never used
+    const {a: _, ...bar} = foo;
     console.log(bar);
 }
 
@@ -24,8 +24,8 @@ function three() {
 
 function four() {
     const foo = { a: 1, b: 2 };
-    // 'blah' is declared but never used
-    const {a: blah, ...bar} = foo; // bar should be unused
+    // '_' is declared but never used
+    const {a: _, ...bar} = foo; // bar should be unused
     //console.log(bar);
 }
 
@@ -48,8 +48,8 @@ function one() {
 }
 function two() {
     var foo = { a: 1, b: 2 };
-    // 'blah' is declared but never used
-    var blah = foo.a, bar = __rest(foo, ["a"]);
+    // '_' is declared but never used
+    var _ = foo.a, bar = __rest(foo, ["a"]);
     console.log(bar);
 }
 function three() {
@@ -60,7 +60,7 @@ function three() {
 }
 function four() {
     var foo = { a: 1, b: 2 };
-    // 'blah' is declared but never used
-    var blah = foo.a, bar = __rest(foo, ["a"]); // bar should be unused
+    // '_' is declared but never used
+    var _ = foo.a, bar = __rest(foo, ["a"]); // bar should be unused
     //console.log(bar);
 }
