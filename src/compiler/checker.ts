@@ -19757,30 +19757,26 @@ namespace ts {
         }
 
         function checkUnusedLocalsAndParameters(node: Node): void {
-            if (node.parent.kind === SyntaxKind.InterfaceDeclaration || !noUnusedIdentifiers || isInAmbientContext(node)) {
-                return;
+            if (node.parent.kind !== SyntaxKind.InterfaceDeclaration && noUnusedIdentifiers && !isInAmbientContext(node)) {
+                node.locals.forEach((local) => {
+                    if (!local.isReferenced) {
+                        const root = local.valueDeclaration && getRootDeclaration(local.valueDeclaration);
+                        if (root && isParameter(root)) {
+                            if (compilerOptions.noUnusedParameters &&
+                                !isParameterPropertyDeclaration(root) &&
+                                !parameterIsThisKeyword(root) &&
+                                !startsWithUnderscore(local.escapedName)) {
+                                error(getNameOfDeclaration(local.valueDeclaration)!, Diagnostics._0_is_declared_but_never_used, unescapeLeadingUnderscores(local.escapedName));
+                            }
+                        }
+                        else if (compilerOptions.noUnusedLocals) {
+                            for (const d of local.declarations) {
+                                errorUnusedLocal(d, local)
+                            }
+                        }
+                    }
+                });
             }
-
-            node.locals.forEach((local) => {
-                if (local.isReferenced) {
-                    return;
-                }
-
-                const root = local.valueDeclaration && getRootDeclaration(local.valueDeclaration);
-                if (root && isParameter(root)) {
-                    if (compilerOptions.noUnusedParameters &&
-                        !isParameterPropertyDeclaration(root) &&
-                        !parameterIsThisKeyword(root) &&
-                        !startsWithUnderscore(local.escapedName)) {
-                        error(getNameOfDeclaration(local.valueDeclaration)!, Diagnostics._0_is_declared_but_never_used, unescapeLeadingUnderscores(local.escapedName));
-                    }
-                }
-                else if (compilerOptions.noUnusedLocals) {
-                    for (const d of local.declarations) {
-                        errorUnusedLocal(d, local)
-                    }
-                }
-            });
         }
 
         function errorUnusedLocal(declaration: Declaration, local: Symbol) {
