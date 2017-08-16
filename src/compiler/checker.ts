@@ -19757,54 +19757,53 @@ namespace ts {
         }
 
         function checkUnusedLocalsAndParameters(node: Node): void {
-            if (node.parent.kind !== SyntaxKind.InterfaceDeclaration && noUnusedIdentifiers && !isInAmbientContext(node)) {
-                node.locals.forEach(local => {
-                    if (!local.isReferenced) {
-                        if (local.valueDeclaration && getRootDeclaration(local.valueDeclaration).kind === SyntaxKind.Parameter) {
-                            const parameter = <ParameterDeclaration>getRootDeclaration(local.valueDeclaration);
-                            const name = getNameOfDeclaration(local.valueDeclaration);
-                            if (compilerOptions.noUnusedParameters &&
-                                !isParameterPropertyDeclaration(parameter) &&
-                                !parameterIsThisKeyword(parameter) &&
-                                !parameterNameStartsWithUnderscore(name)) {
-                                error(name, Diagnostics._0_is_declared_but_never_used, unescapeLeadingUnderscores(local.escapedName));
-                            }
-                        }
-                        else if (compilerOptions.noUnusedLocals) {
-                            forEach(local.declarations, d => errorUnusedLocal(getNameOfDeclaration(d) || d, unescapeLeadingUnderscores(local.escapedName)));
-                        }
-                    }
-                });
+            if (node.parent.kind === SyntaxKind.InterfaceDeclaration || !noUnusedIdentifiers || isInAmbientContext(node)) {
+                return;
             }
-        }
 
-        function isRemovedPropertyFromObjectSpread(node: Node) {
-            if (isBindingElement(node) && isObjectBindingPattern(node.parent)) {
-                const lastElement = lastOrUndefined(node.parent.elements);
-                return lastElement !== node && !!lastElement.dotDotDotToken;
-            }
-            return false;
-        }
-
-        function errorUnusedLocal(node: Node, name: string) {
-            if (isIdentifierThatStartsWithUnderScore(node)) {
-                const declaration = getRootDeclaration(node.parent);
-                if (declaration.kind === SyntaxKind.VariableDeclaration && isForInOrOfStatement(declaration.parent.parent)) {
+            node.locals.forEach((local) => {
+                if (local.isReferenced) {
                     return;
                 }
-            }
 
-            if (!isRemovedPropertyFromObjectSpread(node.kind === SyntaxKind.Identifier ? node.parent : node)) {
-                error(node, Diagnostics._0_is_declared_but_never_used, name);
+                const root = local.valueDeclaration && getRootDeclaration(local.valueDeclaration);
+                if (root && isParameter(root)) {
+                    if (compilerOptions.noUnusedParameters &&
+                        !isParameterPropertyDeclaration(root) &&
+                        !parameterIsThisKeyword(root) &&
+                        !startsWithUnderscore(local.escapedName)) {
+                        error(getNameOfDeclaration(local.valueDeclaration)!, Diagnostics._0_is_declared_but_never_used, unescapeLeadingUnderscores(local.escapedName));
+                    }
+                }
+                else if (compilerOptions.noUnusedLocals) {
+                    for (const d of local.declarations) {
+                        errorUnusedLocal(d, local)
+                    }
+                }
+            });
+        }
+
+        function errorUnusedLocal(declaration: Declaration, local: Symbol) {
+            if (!isAllowedUnusedLocal(declaration, local.escapedName)) {
+                error(getNameOfDeclaration(declaration), Diagnostics._0_is_declared_but_never_used, unescapeLeadingUnderscores(local.escapedName));
             }
         }
 
-        function parameterNameStartsWithUnderscore(parameterName: DeclarationName) {
-            return parameterName && isIdentifierThatStartsWithUnderScore(parameterName);
-        }
-
-        function isIdentifierThatStartsWithUnderScore(node: Node) {
-            return node.kind === SyntaxKind.Identifier && unescapeLeadingUnderscores((<Identifier>node).escapedText).charCodeAt(0) === CharacterCodes._;
+        function isAllowedUnusedLocal(declaration: Declaration, localName: __String): boolean {
+            switch (declaration.kind) {
+                case SyntaxKind.VariableDeclaration:
+                    return isForInOrOfStatement(declaration.parent.parent) && startsWithUnderscore(localName);
+                case SyntaxKind.BindingElement:
+                    if (!(declaration as BindingElement).propertyName && isObjectBindingPattern(declaration.parent)) {
+                        const lastElement = lastOrUndefined(declaration.parent.elements)!;
+                        return lastElement !== declaration && !!lastElement.dotDotDotToken;
+                    }
+                    else {
+                        return startsWithUnderscore(localName);
+                    }
+                default:
+                    return false;
+            }
         }
 
         function checkUnusedClassMembers(node: ClassDeclaration | ClassExpression): void {
@@ -19853,7 +19852,7 @@ namespace ts {
                     if (!local.isReferenced && !local.exportSymbol) {
                         for (const declaration of local.declarations) {
                             if (!isAmbientModule(declaration)) {
-                                errorUnusedLocal(getNameOfDeclaration(declaration), unescapeLeadingUnderscores(local.escapedName));
+                                errorUnusedLocal(declaration, local);
                             }
                         }
                     }

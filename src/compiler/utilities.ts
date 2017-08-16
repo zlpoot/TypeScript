@@ -3913,6 +3913,14 @@ namespace ts {
     }
 
     /**
+     * @internal
+     * True if `unescapeLeadingUnderscores(identifier).startsWith("_")` would be true.
+     */
+    export function startsWithUnderscore(name: __String) {
+        return (name as string).charCodeAt(0) === CharacterCodes._;
+    }
+
+    /**
      * Remove extra underscore from escaped identifier text content.
      * @deprecated Use `id.text` for the unescaped text.
      * @param identifier The escaped identifier text.
@@ -3937,7 +3945,7 @@ namespace ts {
                 case SpecialPropertyAssignmentKind.Property:
                 case SpecialPropertyAssignmentKind.PrototypeProperty:
                     return (expr.left as PropertyAccessExpression).name;
-                default:
+                default: //ModuleExports
                     return undefined;
             }
         }

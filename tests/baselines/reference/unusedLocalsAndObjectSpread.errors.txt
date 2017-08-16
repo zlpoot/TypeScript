@@ -1,8 +1,10 @@
+tests/cases/compiler/unusedLocalsAndObjectSpread.ts(13,15): error TS6133: 'blah' is declared but never used.
 tests/cases/compiler/unusedLocalsAndObjectSpread.ts(20,18): error TS6133: 'bar' is declared but never used.
-tests/cases/compiler/unusedLocalsAndObjectSpread.ts(27,21): error TS6133: 'bar' is declared but never used.
+tests/cases/compiler/unusedLocalsAndObjectSpread.ts(27,15): error TS6133: 'blah' is declared but never used.
+tests/cases/compiler/unusedLocalsAndObjectSpread.ts(27,24): error TS6133: 'bar' is declared but never used.
 
 
-==== tests/cases/compiler/unusedLocalsAndObjectSpread.ts (2 errors) ====
+==== tests/cases/compiler/unusedLocalsAndObjectSpread.ts (4 errors) ====
     declare var console: { log(a: any): void };
     
     function one() {
@@ -14,8 +16,10 @@ tests/cases/compiler/unusedLocalsAndObjectSpread.ts(27,21): error TS6133: 'bar' 
     
     function two() {
         const foo = { a: 1, b: 2 };
-        // '_' is declared but never used
-        const {a: _, ...bar} = foo;
+        // 'blah' is declared but never used
+        const {a: blah, ...bar} = foo;
+                  ~~~~
+!!! error TS6133: 'blah' is declared but never used.
         console.log(bar);
     }
     
@@ -30,9 +34,11 @@ tests/cases/compiler/unusedLocalsAndObjectSpread.ts(27,21): error TS6133: 'bar' 
     
     function four() {
         const foo = { a: 1, b: 2 };
-        // '_' is declared but never used
-        const {a: _, ...bar} = foo; // bar should be unused
-                        ~~~
+        // 'blah' is declared but never used
+        const {a: blah, ...bar} = foo; // bar should be unused
+                  ~~~~
+!!! error TS6133: 'blah' is declared but never used.
+                           ~~~
 !!! error TS6133: 'bar' is declared but never used.
         //console.log(bar);
     }

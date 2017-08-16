@@ -1,0 +1,10 @@
+=== tests/cases/compiler/unusedDestructuringLocals.ts ===
+export {};
+// No error for names beginning in "_"
+//const [a, _b] = [1, 2];
+//const { x, y: _y } = { x: 1, y: 2 };
+const { x: _x } = { x: 1 };
+>x : Symbol(x, Decl(unusedDestructuringLocals.ts, 4, 19))
+>_x : Symbol(_x, Decl(unusedDestructuringLocals.ts, 4, 7))
+>x : Symbol(x, Decl(unusedDestructuringLocals.ts, 4, 19))
+
