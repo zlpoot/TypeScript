@@ -19758,7 +19758,7 @@ namespace ts {
 
         function checkUnusedLocalsAndParameters(node: Node): void {
             if (node.parent.kind !== SyntaxKind.InterfaceDeclaration && noUnusedIdentifiers && !isInAmbientContext(node)) {
-                node.locals.forEach((local) => {
+                node.locals.forEach(local => {
                     if (!local.isReferenced) {
                         const root = local.valueDeclaration && getRootDeclaration(local.valueDeclaration);
                         if (root && isParameter(root)) {
@@ -19766,12 +19766,14 @@ namespace ts {
                                 !isParameterPropertyDeclaration(root) &&
                                 !parameterIsThisKeyword(root) &&
                                 !startsWithUnderscore(local.escapedName)) {
-                                error(getNameOfDeclaration(local.valueDeclaration)!, Diagnostics._0_is_declared_but_never_used, unescapeLeadingUnderscores(local.escapedName));
+                                errorUnusedLocal(local.valueDeclaration!, local);
                             }
                         }
                         else if (compilerOptions.noUnusedLocals) {
                             for (const d of local.declarations) {
-                                errorUnusedLocal(d, local)
+                                if (!isAllowedUnusedLocal(d, local)) {
+                                    errorUnusedLocal(d, local)
+                                }
                             }
                         }
                     }
@@ -19780,18 +19782,17 @@ namespace ts {
         }
 
         function errorUnusedLocal(declaration: Declaration, local: Symbol) {
-            if (!isAllowedUnusedLocal(declaration, local.escapedName)) {
-                error(getNameOfDeclaration(declaration), Diagnostics._0_is_declared_but_never_used, unescapeLeadingUnderscores(local.escapedName));
-            }
+            error(getNameOfDeclaration(declaration)!, Diagnostics._0_is_declared_but_never_used, unescapeLeadingUnderscores(local.escapedName));
         }
 
-        function isAllowedUnusedLocal(declaration: Declaration, localName: __String): boolean {
+        function isAllowedUnusedLocal(declaration: Declaration, local: Symbol): boolean {
             switch (declaration.kind) {
                 case SyntaxKind.VariableDeclaration:
-                    return isForInOrOfStatement(declaration.parent.parent) && startsWithUnderscore(localName);
+                    return isForInOrOfStatement(declaration.parent.parent) && startsWithUnderscore(local.escapedName);
                 case SyntaxKind.BindingElement:
-                    if (isObjectBindingPattern(declaration.parent)) {
-                        const lastElement = lastOrUndefined(declaration.parent.elements)!;
+                    const pattern = (declaration as BindingElement).parent;
+                    if (pattern.kind === SyntaxKind.ObjectBindingPattern) {
+                        const lastElement = lastOrUndefined(pattern.elements)!;
                         return lastElement !== declaration && !!lastElement.dotDotDotToken;
                     }
                     // falls through
@@ -19845,7 +19846,7 @@ namespace ts {
                 node.locals.forEach(local => {
                     if (!local.isReferenced && !local.exportSymbol) {
                         for (const declaration of local.declarations) {
-                            if (!isAmbientModule(declaration)) {
+                            if (!isAmbientModule(declaration) && !isAllowedUnusedLocal(declaration, local)) {
                                 errorUnusedLocal(declaration, local);
                             }
                         }
