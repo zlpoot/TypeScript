@@ -3,9 +3,9 @@
 namespace ts.FindAllReferences {
     export interface ImportsResult {
         /** For every import of the symbol, the location and local symbol for the import. */
-        importSearches: Array<[Identifier, Symbol]>;
+        importSearches: ReadonlyArray<[Identifier, Symbol]>;
         /** For rename imports/exports `{ foo as bar }`, `foo` is not a local, so it may be added as a reference immediately without further searching. */
-        singleReferences: Identifier[];
+        singleReferences: ReadonlyArray<Identifier>;
         /** List of source files that may (or may not) use the symbol via a namespace. (For UMD modules this is every file.) */
         indirectUsers: ReadonlyArray<SourceFile>;
     }
@@ -39,11 +39,11 @@ namespace ts.FindAllReferences {
     /** Returns import statements that directly reference the exporting module, and a list of files that may access the module through a namespace. */
     function getImportersForExport(
             sourceFiles: ReadonlyArray<SourceFile>,
-            allDirectImports: Map<ImporterOrCallExpression[]>,
+            allDirectImports: ReadonlyArray<ReadonlyArray<ImporterOrCallExpression>>,
             { exportingModuleSymbol, exportKind }: ExportInfo,
             checker: TypeChecker,
             cancellationToken: CancellationToken
-            ): { directImports: Importer[], indirectUsers: ReadonlyArray<SourceFile> } {
+            ): { directImports: ReadonlyArray<Importer>, indirectUsers: ReadonlyArray<SourceFile> } {
         const markSeenDirectImport = nodeSeenTracker<ImporterOrCallExpression>();
         const markSeenIndirectUser = nodeSeenTracker<SourceFileLike>();
         const directImports: Importer[] = [];
@@ -169,8 +169,8 @@ namespace ts.FindAllReferences {
             }
         }
 
-        function getDirectImports(moduleSymbol: Symbol): ImporterOrCallExpression[] | undefined {
-            return allDirectImports.get(getSymbolId(moduleSymbol).toString());
+        function getDirectImports(moduleSymbol: Symbol): ReadonlyArray<ImporterOrCallExpression> | undefined {
+            return allDirectImports[getSymbolId(moduleSymbol)];
         }
     }
 
@@ -179,7 +179,7 @@ namespace ts.FindAllReferences {
      * The returned `importSearches` will result in the entire source file being searched.
      * But re-exports will be placed in 'singleReferences' since they cannot be locally referenced.
      */
-    function getSearchesFromDirectImports(directImports: Importer[], exportSymbol: Symbol, exportKind: ExportKind, checker: TypeChecker, isForRename: boolean): Pick<ImportsResult, "importSearches" | "singleReferences"> {
+    function getSearchesFromDirectImports(directImports: ReadonlyArray<Importer>, exportSymbol: Symbol, exportKind: ExportKind, checker: TypeChecker, isForRename: boolean): Pick<ImportsResult, "importSearches" | "singleReferences"> {
         const exportName = exportSymbol.escapedName;
         const importSearches: Array<[Identifier, Symbol]> = [];
         const singleReferences: Identifier[] = [];
@@ -313,7 +313,7 @@ namespace ts.FindAllReferences {
         | { kind: "import", literal: StringLiteral }
         /** <reference path> or <reference types> */
         | { kind: "reference", referencingFile: SourceFile, ref: FileReference };
-    export function findModuleReferences(program: Program, sourceFiles: ReadonlyArray<SourceFile>, searchModuleSymbol: Symbol): ModuleReference[] {
+    export function findModuleReferences(program: Program, sourceFiles: ReadonlyArray<SourceFile>, searchModuleSymbol: Symbol): ReadonlyArray<ModuleReference> {
         const refs: ModuleReference[] = [];
         const checker = program.getTypeChecker();
         for (const referencingFile of sourceFiles) {
@@ -342,19 +342,19 @@ namespace ts.FindAllReferences {
         return refs;
     }
 
-    /** Returns a map from a module symbol Id to all import statements that directly reference the module. */
-    function getDirectImportsMap(sourceFiles: ReadonlyArray<SourceFile>, checker: TypeChecker, cancellationToken: CancellationToken): Map<ImporterOrCallExpression[]> {
-        const map = createMap<ImporterOrCallExpression[]>();
+    /** Returns a sparse array mapping from a module symbol id to all import statements that directly reference the module. */
+    function getDirectImportsMap(sourceFiles: ReadonlyArray<SourceFile>, checker: TypeChecker, cancellationToken: CancellationToken): ReadonlyArray<ReadonlyArray<ImporterOrCallExpression>> {
+        const map: ImporterOrCallExpression[][] = [];
 
         for (const sourceFile of sourceFiles) {
             cancellationToken.throwIfCancellationRequested();
             forEachImport(sourceFile, (importDecl, moduleSpecifier) => {
                 const moduleSymbol = checker.getSymbolAtLocation(moduleSpecifier);
                 if (moduleSymbol) {
-                    const id = getSymbolId(moduleSymbol).toString();
-                    let imports = map.get(id);
+                    const id = getSymbolId(moduleSymbol);
+                    let imports = map[id];
                     if (!imports) {
-                        map.set(id, imports = []);
+                        map[id] = imports = [];
                     }
                     imports.push(importDecl);
                 }
