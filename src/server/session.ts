@@ -1486,6 +1486,8 @@ namespace ts.server {
             const scriptInfo = project.getScriptInfoForNormalizedPath(file);
             const { position, textRange } = this.extractPositionAndRange(args, scriptInfo);
 
+            //this.projectService.setHostConfiguration
+            //this.projectService.getFormatCodeOptions()
             const result = project.getLanguageService().getEditsForRefactor(
                 file,
                 args.formatOptions ? convertFormatOptions(args.formatOptions) : this.projectService.getFormatCodeOptions(),
@@ -1841,7 +1843,7 @@ namespace ts.server {
                 return this.notRequired();
             },
             [CommandNames.Configure]: (request: protocol.ConfigureRequest) => {
-                this.projectService.setHostConfiguration(request.arguments);
+                this.projectService.setHostConfiguration(request.arguments); //here!
                 this.output(undefined, CommandNames.Configure, request.seq);
                 return this.notRequired();
             },

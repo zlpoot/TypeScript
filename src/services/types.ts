@@ -494,7 +494,7 @@ namespace ts {
         baseIndentSize?: number;
         indentSize?: number;
         tabSize?: number;
-        newLineCharacter?: string;
+        newLineCharacter: string;
         convertTabsToSpaces?: boolean;
         indentStyle?: IndentStyle;
     }

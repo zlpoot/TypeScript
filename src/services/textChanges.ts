@@ -558,6 +558,7 @@ namespace ts.textChanges {
                     : (options.useIndentationFromFile !== false)
                         ? formatting.SmartIndenter.getIndentation(pos, sourceFile, formatOptions, posStartsLine || (options.prefix === this.newLineCharacter))
                         : 0;
+            Debug.assert(!isNaN(initialIndentation));
             const delta =
                 options.delta !== undefined
                     ? options.delta

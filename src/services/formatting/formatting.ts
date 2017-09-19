@@ -338,6 +338,8 @@ namespace ts.formatting {
 
     /* @internal */
     export function formatNodeGivenIndentation(node: Node, sourceFileLike: SourceFileLike, languageVariant: LanguageVariant, initialIndentation: number, delta: number,  rulesProvider: RulesProvider): TextChange[] {
+        Debug.assert(!isNaN(initialIndentation) && !isNaN(delta));
+
         const range = { pos: 0, end: sourceFileLike.text.length };
         return getFormattingScanner(sourceFileLike.text, languageVariant, range.pos, range.end, scanner => formatSpanWorker(
             range,
@@ -475,7 +477,8 @@ namespace ts.formatting {
             effectiveParentStartLine: number): Indentation {
 
             let indentation = inheritedIndentation;
-            let delta = SmartIndenter.shouldIndentChildNode(node) ? options.indentSize : 0;
+            //options.indentSize may be undefined!
+            let delta = options.indentSize !== undefined && SmartIndenter.shouldIndentChildNode(node) ? options.indentSize : 0;
 
             if (effectiveParentStartLine === startLine) {
                 // if node is located on the same line with the parent
@@ -524,6 +527,10 @@ namespace ts.formatting {
         }
 
         function getDynamicIndentation(node: Node, nodeStartLine: number, indentation: number, delta: number): DynamicIndentation {
+            //kill
+            Debug.assert(!isNaN(nodeStartLine));
+            Debug.assert(!isNaN(indentation));
+            Debug.assert(!isNaN(delta));
             return {
                 getIndentationForComment: (kind, tokenIndentation, container) => {
                     switch (kind) {
@@ -1243,11 +1250,13 @@ namespace ts.formatting {
         return SyntaxKind.Unknown;
     }
 
-    let internedSizes: { tabSize: number; indentSize: number };
+    let internedSizes: { tabSize: number; indentSize: number }; //but these options may be undefined...
     let internedTabsIndentation: string[];
     let internedSpacesIndentation: string[];
 
     export function getIndentationString(indentation: number, options: EditorSettings): string {
+        Debug.assert(!isNaN(indentation));
+
         // reset interned strings if FormatCodeOptions were changed
         const resetInternedStrings =
             !internedSizes || (internedSizes.tabSize !== options.tabSize || internedSizes.indentSize !== options.indentSize);

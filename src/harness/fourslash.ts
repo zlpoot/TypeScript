@@ -2790,7 +2790,7 @@ namespace FourSlash {
             }
         }
 
-        public applyRefactor({ refactorName, actionName, actionDescription, newContent: newContentWithRenameMarker }: FourSlashInterface.ApplyRefactorOptions) {
+        public applyRefactor({ refactorName, actionName, actionDescription, newContent: newContentWithRenameMarker, formatting }: FourSlashInterface.ApplyRefactorOptions) {
             const range = this.getSelection();
             const refactors = this.languageService.getApplicableRefactors(this.activeFile.fileName, range);
             const refactor = refactors.find(r => r.name === refactorName);
@@ -2806,7 +2806,7 @@ namespace FourSlash {
                 this.raiseError(`Expected action description to be ${JSON.stringify(actionDescription)}, got: ${JSON.stringify(action.description)}`);
             }
 
-            const editInfo = this.languageService.getEditsForRefactor(this.activeFile.fileName, this.formatCodeSettings, range, refactorName, actionName);
+            const editInfo = this.languageService.getEditsForRefactor(this.activeFile.fileName, formatting || this.formatCodeSettings, range, refactorName, actionName);
             for (const edit of editInfo.edits) {
                 this.applyEdits(edit.fileName, edit.textChanges, /*isFormattingEdit*/ false);
             }
@@ -2846,7 +2846,7 @@ namespace FourSlash {
             expectedContent: string,
             refactorNameToApply: string,
             actionName: string,
-            formattingOptions?: ts.FormatCodeSettings) {
+            formattingOptions?: ts.FormatCodeSettings) { //!!!!!!
 
             formattingOptions = formattingOptions || this.formatCodeSettings;
             const markerPos = this.getMarkerByName(markerName).position;
@@ -4348,6 +4348,7 @@ namespace FourSlashInterface {
         actionName: string;
         actionDescription: string;
         newContent: string;
+        formatting: ts.FormatCodeSettings;
     }
 
     export interface CompletionsAtOptions {
