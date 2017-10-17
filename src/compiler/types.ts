@@ -3072,6 +3072,8 @@ namespace ts {
         bindingElement?: BindingElement;    // Binding element associated with property symbol
         exportsSomeValue?: boolean;         // True if module exports some value (not just types)
         enumKind?: EnumKind;                // Enum declaration classification
+        mappedType?: MappedType;            // Mapped type of inferred property
+        outputProp?: Symbol;                // Output property of inferred property
     }
 
     /* @internal */
@@ -3092,6 +3094,7 @@ namespace ts {
         ContainsProtected = 1 << 7,         // Synthetic property with protected constituent(s)
         ContainsPrivate   = 1 << 8,         // Synthetic property with private constituent(s)
         ContainsStatic    = 1 << 9,         // Synthetic property with static constituent(s)
+        Inferred          = 1 << 10,        // Property in inferred input type for mapped type
         Synthetic = SyntheticProperty | SyntheticMethod
     }
 

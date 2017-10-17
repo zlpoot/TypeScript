@@ -4771,9 +4771,21 @@ namespace ts {
             return anyType;
         }
 
+        function getTypeOfInferredSymbol(symbol: Symbol): Type {
+            const links = getSymbolLinks(symbol);
+            if (!links.type) {
+                links.type = inferMappedTypeInputType(links.mappedType, getTypeOfSymbol(links.outputProp));
+            }
+            return links.type;
+        }
+
         function getTypeOfSymbol(symbol: Symbol): Type {
-            if (getCheckFlags(symbol) & CheckFlags.Instantiated) {
+            const checkFlags = getCheckFlags(symbol);
+            if (checkFlags & CheckFlags.Instantiated) {
                 return getTypeOfInstantiatedSymbol(symbol);
+            }
+            if (checkFlags & CheckFlags.Inferred) {
+                return getTypeOfInferredSymbol(symbol);
             }
             if (symbol.flags & (SymbolFlags.Variable | SymbolFlags.Property)) {
                 return getTypeOfVariableOrParameterOrProperty(symbol);
@@ -5886,7 +5898,7 @@ namespace ts {
                     else if ((<ObjectType>type).objectFlags & ObjectFlags.Anonymous) {
                         resolveAnonymousTypeMembers(<AnonymousType>type);
                     }
-                    else if ((<MappedType>type).objectFlags & ObjectFlags.Mapped) {
+                    else if ((<ObjectType>type).objectFlags & ObjectFlags.Mapped) {
                         resolveMappedTypeMembers(<MappedType>type);
                     }
                 }
@@ -8414,11 +8426,11 @@ namespace ts {
                         return type.symbol && type.symbol.flags & (SymbolFlags.Function | SymbolFlags.Method | SymbolFlags.Class | SymbolFlags.TypeLiteral | SymbolFlags.ObjectLiteral) && type.symbol.declarations ?
                             getAnonymousTypeInstantiation(<AnonymousType>type, mapper) : type;
                     }
-                    if ((<ObjectType>type).objectFlags & ObjectFlags.Mapped) {
-                        return getAnonymousTypeInstantiation(<MappedType>type, mapper);
-                    }
                     if ((<ObjectType>type).objectFlags & ObjectFlags.Reference) {
                         return createTypeReference((<TypeReference>type).target, instantiateTypes((<TypeReference>type).typeArguments, mapper));
+                    }
+                    if ((<ObjectType>type).objectFlags & ObjectFlags.Mapped) {
+                        return getAnonymousTypeInstantiation(<MappedType>type, mapper);
                     }
                 }
                 if (type.flags & TypeFlags.Union && !(type.flags & TypeFlags.Primitive)) {
@@ -10650,46 +10662,39 @@ namespace ts {
 
         // Infer a suitable input type for a homomorphic mapped type { [P in keyof T]: X }. We construct
         // an object type with the same set of properties as the source type, where the type of each
-        // property is computed by inferring from the source property type to X for the type
-        // variable T[P] (i.e. we treat the type T[P] as the type variable we're inferring for).
+        // property is computed by inferring from the source property type to X for the type variable
+        // T[P] (i.e. we treat the type T[P] as the type variable we're inferring for). The properties
+        // of the resulting type are flagged with CheckFlags.Inferred and the final stage of the inference
+        // process is deferred until the type of a particular property is actually requested.
         function inferTypeForHomomorphicMappedType(source: Type, target: MappedType): Type {
             const properties = getPropertiesOfType(source);
             let indexInfo = getIndexInfoOfType(source, IndexKind.String);
             if (properties.length === 0 && !indexInfo) {
                 return undefined;
             }
-            const typeParameter = <TypeParameter>getIndexedAccessType((<IndexType>getConstraintTypeFromMappedType(target)).type, getTypeParameterFromMappedType(target));
-            const inference = createInferenceInfo(typeParameter);
-            const inferences = [inference];
-            const templateType = getTemplateTypeFromMappedType(target);
             const readonlyMask = target.declaration.readonlyToken ? false : true;
             const optionalMask = target.declaration.questionToken ? 0 : SymbolFlags.Optional;
             const members = createSymbolTable();
             for (const prop of properties) {
-                const inferredPropType = inferTargetType(getTypeOfSymbol(prop));
-                if (!inferredPropType) {
+                if (getTypeOfSymbol(prop).flags & TypeFlags.ContainsAnyFunctionType) {
                     return undefined;
                 }
                 const inferredProp = createSymbol(SymbolFlags.Property | prop.flags & optionalMask, prop.escapedName);
-                inferredProp.checkFlags = readonlyMask && isReadonlySymbol(prop) ? CheckFlags.Readonly : 0;
+                inferredProp.checkFlags = CheckFlags.Inferred | (readonlyMask && isReadonlySymbol(prop) ? CheckFlags.Readonly : 0);
                 inferredProp.declarations = prop.declarations;
-                inferredProp.type = inferredPropType;
+                inferredProp.mappedType = target;
+                inferredProp.outputProp = prop;
                 members.set(prop.escapedName, inferredProp);
             }
-            if (indexInfo) {
-                const inferredIndexType = inferTargetType(indexInfo.type);
-                if (!inferredIndexType) {
-                    return undefined;
-                }
-                indexInfo = createIndexInfo(inferredIndexType, readonlyMask && indexInfo.isReadonly);
-            }
-            return createAnonymousType(undefined, members, emptyArray, emptyArray, indexInfo, undefined);
+            const inferredIndexInfo = indexInfo && createIndexInfo(inferMappedTypeInputType(target, indexInfo.type), readonlyMask && indexInfo.isReadonly);
+            return createAnonymousType(undefined, members, emptyArray, emptyArray, inferredIndexInfo, undefined);
+        }
 
-            function inferTargetType(sourceType: Type): Type {
-                inference.candidates = undefined;
-                inferTypes(inferences, sourceType, templateType);
-                return inference.candidates && getUnionType(inference.candidates, /*subtypeReduction*/ true);
-            }
+        function inferMappedTypeInputType(mappedType: MappedType, outputType: Type) {
+            const typeParameter = <TypeParameter>getIndexedAccessType((<IndexType>getConstraintTypeFromMappedType(mappedType)).type, getTypeParameterFromMappedType(mappedType));
+            const inference = createInferenceInfo(typeParameter);
+            inferTypes([inference], outputType, getTemplateTypeFromMappedType(mappedType));
+            return inference.candidates ? getUnionType(inference.candidates, /*subtypeReduction*/ true) : emptyObjectType;
         }
 
         function getUnmatchedProperty(source: Type, target: Type, requireOptionalProperties: boolean) {
@@ -15783,7 +15788,16 @@ namespace ts {
                     const checkArgType = excludeArgument ? getRegularTypeOfObjectLiteral(argType) : argType;
                     // Use argument expression as error location when reporting errors
                     const errorNode = reportErrors ? getEffectiveArgumentErrorNode(node, i, arg) : undefined;
-                    if (!checkTypeRelatedTo(checkArgType, paramType, relation, errorNode, headMessage)) {
+                    // We temporarily store the signature as the resolve signature such that any deferred expression
+                    // checking that triggers during the relationship check will see the appropriate contextual type.
+                    // This happens when the argument contains object literal methods with inferred return types that
+                    // reference 'this' and 'this' has a ThisType<T>.
+                    const links = getNodeLinks(node);
+                    const cached = links.resolvedSignature;
+                    links.resolvedSignature = signature;
+                    const related = checkTypeRelatedTo(checkArgType, paramType, relation, errorNode, headMessage);
+                    links.resolvedSignature = cached;
+                    if (!related) {
                         return false;
                     }
                 }
