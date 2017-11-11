@@ -755,6 +755,8 @@ namespace ts {
 
 
         function addJSDocComment<T extends HasJSDoc>(node: T): T {
+            return node;
+            // @ts-ignore: yolo
             const comments = getJSDocCommentRanges(node, sourceFile.text);
             if (comments) {
                 for (const comment of comments) {
