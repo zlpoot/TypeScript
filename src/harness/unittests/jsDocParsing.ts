@@ -94,7 +94,8 @@ namespace ts {
                         Debug.fail("Comment failed to parse entirely");
                     }
                     if (comment.diagnostics.length > 0) {
-                        Debug.fail("Comment has at least one diagnostic: " + comment.diagnostics[0].messageText);
+                        const diag = comment.diagnostics[0];
+                        Debug.fail("Comment has at least one diagnostic: " + diag.messageText + " at " + diag.start);
                     }
 
                     Harness.Baseline.runBaseline("JSDocParsing/DocComments.parsesCorrectly." + name + ".json",

@@ -1160,7 +1160,9 @@ namespace ts {
         return result;
     }
 
-    export function toArray<T>(value: T | ReadonlyArray<T>): ReadonlyArray<T> {
+    export function toArray<T>(value: T | ReadonlyArray<T>): ReadonlyArray<T>;
+    export function toArray<T>(value: T | T[]): T[];
+    export function toArray<T>(value: T | T[]): T[] {
         return isArray(value) ? value : [value];
     }
 
@@ -1364,10 +1366,6 @@ namespace ts {
      */
     export function isArray(value: any): value is ReadonlyArray<any> {
         return Array.isArray ? Array.isArray(value) : value instanceof Array;
-    }
-
-    export function toArray<T>(value: T | T[]): T[] {
-        return isArray(value) ? value : [value];
     }
 
     /**
