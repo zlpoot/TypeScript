@@ -215,7 +215,7 @@ namespace ts.server {
 
         constructor(
             private readonly host: ServerHost,
-            readonly fileName: NormalizedPath,
+            public fileName: NormalizedPath,
             readonly scriptKind: ScriptKind,
             public readonly hasMixedContent: boolean,
             readonly path: Path) {

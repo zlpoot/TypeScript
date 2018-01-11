@@ -146,7 +146,7 @@ interface Array<T> {}`
     export function checkFileNames(caption: string, actualFileNames: ReadonlyArray<string>, expectedFileNames: string[]) {
         assert.equal(actualFileNames.length, expectedFileNames.length, `${caption}: incorrect actual number of files, expected:\r\n${expectedFileNames.join("\r\n")}\r\ngot: ${actualFileNames.join("\r\n")}`);
         for (const f of expectedFileNames) {
-            assert.equal(true, contains(actualFileNames, f), `${caption}: expected to find ${f} in ${actualFileNames}`);
+            assert(contains(actualFileNames, f), `${caption}: expected to find ${f} in ${actualFileNames}`);
         }
     }
 
@@ -347,6 +347,11 @@ interface Array<T> {}`
             }
         }
 
+        renameFile(path: string, newPath: string): void {
+            const file = this.fs.get(path);
+            this.doRenameFile(cast(file!, isFile), newPath);
+        }
+
         renameFolder(folderName: string, newFolderName: string) {
             const fullPath = getNormalizedAbsolutePath(folderName, this.currentDirectory);
             const path = this.toPath(fullPath);
@@ -368,16 +373,19 @@ interface Array<T> {}`
 
             // Invoke watches for files in the folder as deleted (from old path)
             for (const entry of folder.entries) {
-                Debug.assert(isFile(entry));
-                this.fs.delete(entry.path);
-                this.invokeFileWatcher(entry.fullPath, FileWatcherEventKind.Deleted);
-
-                entry.fullPath = combinePaths(newFullPath, getBaseFileName(entry.fullPath));
-                entry.path = this.toPath(entry.fullPath);
+                this.doRenameFile(cast(entry, isFile), combinePaths(newFullPath, getBaseFileName(entry.fullPath)));
                 newFolder.entries.push(entry);
-                this.fs.set(entry.path, entry);
-                this.invokeFileWatcher(entry.fullPath, FileWatcherEventKind.Created);
             }
+        }
+
+        private doRenameFile(file: File, newPath: string): void {
+            this.fs.delete(file.path);
+            this.invokeFileWatcher(file.fullPath, FileWatcherEventKind.Deleted);
+
+            file.fullPath = newPath;
+            file.path = this.toPath(file.fullPath);
+            this.fs.set(file.path, file);
+            this.invokeFileWatcher(file.fullPath, FileWatcherEventKind.Created);
         }
 
         ensureFileOrFolder(fileOrDirectory: FileOrFolder, ignoreWatchInvokedWithTriggerAsFileCreate?: boolean) {

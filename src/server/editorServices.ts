@@ -616,7 +616,7 @@ namespace ts.server {
             for (const project of projects) {
                 this.delayUpdateProjectGraph(project);
             }
-            this.delayInferredProjectsRefresh();
+            this.delayInferredProjectsRefresh();//only if projects is non-empty...
         }
 
         setCompilerOptionsForInferredProjects(projectCompilerOptions: protocol.ExternalProjectCompilerOptions, projectRootPath?: string): void {
@@ -1771,7 +1771,8 @@ namespace ts.server {
             return this.getOrCreateScriptInfoWorker(fileName, this.currentDirectory, openedByClient, fileContent, scriptKind, hasMixedContent, hostToQueryFileExistsOn);
         }
 
-        private getOrCreateScriptInfoWorker(fileName: NormalizedPath, currentDirectory: string, openedByClient: boolean, fileContent?: string, scriptKind?: ScriptKind, hasMixedContent?: boolean, hostToQueryFileExistsOn?: DirectoryStructureHost) {
+        //hasMixedContent is true for a file that has non-JS content
+        private getOrCreateScriptInfoWorker(fileName: NormalizedPath, currentDirectory: string, openedByClient: boolean, fileContent?: string, scriptKind?: ScriptKind, hasMixedContent?: boolean, hostToQueryFileExistsOn?: DirectoryStructureHost): ScriptInfo {
             Debug.assert(fileContent === undefined || openedByClient, "ScriptInfo needs to be opened by client to be able to set its user defined content");
             const path = normalizedPathToPath(fileName, currentDirectory, this.toCanonicalFileName);
             let info = this.getScriptInfoForPath(path);
@@ -1794,6 +1795,13 @@ namespace ts.server {
                     this.openFilesWithNonRootedDiskPath.set(this.toCanonicalFileName(fileName), info);
                 }
             }
+            else if (openedByClient && info.fileName !== fileName) {
+                this.handleDeletedFile(info);
+                //!!! We need to add the newly-created info to any configured projects. But that doesn't seem to happen.
+                //re-open with correct casing
+                return this.getOrCreateScriptInfoWorker(fileName, currentDirectory, openedByClient, fileContent, scriptKind, hasMixedContent, hostToQueryFileExistsOn);
+            }
+
             if (openedByClient && !info.isScriptOpen()) {
                 // Opening closed script info
                 // either it was created just now, or was part of projects but was closed
@@ -1804,7 +1812,7 @@ namespace ts.server {
                 }
             }
             else {
-                Debug.assert(fileContent === undefined);
+                Debug.assert(fileContent === undefined || fileContent === info.getSnapshot().getText(0, info.getSnapshot().getLength()));
             }
             return info;
         }
