@@ -1,0 +1,30 @@
+=== tests/cases/compiler/destrucuringNoFreshLiteralLeak.ts ===
+const { x = () => ({a: 12}) } = { x: () => ({a: 24, b: 12}) };
+>x : Symbol(x, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 7))
+>a : Symbol(a, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 20))
+>x : Symbol(x, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 33))
+>a : Symbol(a, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 45))
+>b : Symbol(b, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 51))
+
+declare function f(x: {a: number}): void;
+>f : Symbol(f, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 62))
+>x : Symbol(x, Decl(destrucuringNoFreshLiteralLeak.ts, 1, 19))
+>a : Symbol(a, Decl(destrucuringNoFreshLiteralLeak.ts, 1, 23))
+
+f(x());
+>f : Symbol(f, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 62))
+>x : Symbol(x, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 7))
+
+function go({ x = () => ({a: 12}) } = { x: () => ({a: 24, b: 12}) }) {
+>go : Symbol(go, Decl(destrucuringNoFreshLiteralLeak.ts, 2, 7))
+>x : Symbol(x, Decl(destrucuringNoFreshLiteralLeak.ts, 4, 13))
+>a : Symbol(a, Decl(destrucuringNoFreshLiteralLeak.ts, 4, 26))
+>x : Symbol(x, Decl(destrucuringNoFreshLiteralLeak.ts, 4, 39))
+>a : Symbol(a, Decl(destrucuringNoFreshLiteralLeak.ts, 4, 51))
+>b : Symbol(b, Decl(destrucuringNoFreshLiteralLeak.ts, 4, 57))
+
+    f(x());
+>f : Symbol(f, Decl(destrucuringNoFreshLiteralLeak.ts, 0, 62))
+>x : Symbol(x, Decl(destrucuringNoFreshLiteralLeak.ts, 4, 13))
+}
+

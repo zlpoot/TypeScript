@@ -4616,7 +4616,7 @@ namespace ts {
         // one is present. Otherwise, if the element is itself a binding pattern, it is the type implied by the binding
         // pattern. Otherwise, it is the type any.
         function getTypeFromBindingElement(element: BindingElement, includePatternInType?: boolean, reportErrors?: boolean): Type {
-            if (element.initializer) {
+            if (element.initializer && !includePatternInType) {
                 return checkDeclarationInitializer(element);
             }
             if (isBindingPattern(element.name)) {
@@ -18139,7 +18139,7 @@ namespace ts {
                 if (decl.name.kind !== SyntaxKind.Identifier) {
                     // if inference didn't come up with anything but {}, fall back to the binding pattern if present.
                     if (links.type === emptyObjectType) {
-                        links.type = getTypeFromBindingPattern(decl.name);
+                        links.type = getTypeFromBindingPattern(decl.name, /*includePatternInType*/ true);
                     }
                     assignBindingElementTypes(decl.name);
                 }
@@ -18251,7 +18251,7 @@ namespace ts {
                 type = getWidenedLiteralLikeTypeForContextualType(type, contextualType);
             }
 
-            const widenedType = ((isFunctionExpression(func) && !func.name) || isArrowFunction(func)) && getContextualType(func) ? type : getWidenedType(type);
+            const widenedType = ((isFunctionExpression(func) && !func.name) || isArrowFunction(func)) && contextualSignature ? type : getWidenedType(type);
             switch (functionFlags & FunctionFlags.AsyncGenerator) {
                 case FunctionFlags.AsyncGenerator:
                     return createAsyncIterableIteratorType(widenedType);

@@ -36,11 +36,11 @@ let { a = "foo" } = { a: "foo" };
 >"foo" : "foo"
 
 let { b = "foo" as "foo" } = { b: "bar" };
->b : "foo" | "bar"
+>b : string
 >"foo" as "foo" : "foo"
 >"foo" : "foo"
->{ b: "bar" } : { b?: "bar"; }
->b : "bar"
+>{ b: "bar" } : { b?: string; }
+>b : string
 >"bar" : "bar"
 
 let { c = "foo" } = { c: "bar" as "bar" };

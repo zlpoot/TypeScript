@@ -41,9 +41,9 @@ trans(([{g},{h}]) => 'foo');
 trans(({a, b = 10}) => a);
 >trans(({a, b = 10}) => a) : number
 >trans : <T>(f: (x: T) => string) => number
->({a, b = 10}) => a : ({ a, b }: { a: any; b?: number; }) => any
+>({a, b = 10}) => a : ({ a, b }: { a: any; b?: any; }) => any
 >a : any
->b : number
+>b : any
 >10 : 10
 >a : any
 

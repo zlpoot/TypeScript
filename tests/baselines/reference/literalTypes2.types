@@ -482,16 +482,16 @@ function f6() {
     const { c1 = true, c2 = 0, c3 = "foo" } = { c1: false, c2: 1, c3: "bar" };
 >c1 : boolean
 >true : true
->c2 : 1 | 0
+>c2 : number
 >0 : 0
->c3 : "foo" | "bar"
+>c3 : string
 >"foo" : "foo"
->{ c1: false, c2: 1, c3: "bar" } : { c1?: false; c2?: 1; c3?: "bar"; }
->c1 : false
+>{ c1: false, c2: 1, c3: "bar" } : { c1?: boolean; c2?: number; c3?: string; }
+>c1 : boolean
 >false : false
->c2 : 1
+>c2 : number
 >1 : 1
->c3 : "bar"
+>c3 : string
 >"bar" : "bar"
 
     let { x1 = true, x2 = 0, x3 = "foo" } = { x1: false, x2: 1, x3: "bar" };
