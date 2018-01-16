@@ -39,6 +39,15 @@ namespace ts.server {
         constructor(private readonly host: ServerHost, private readonly fileName: NormalizedPath) {
         }
 
+        //mv
+        public useNextVersion() {
+            if (this.svc) {
+                this.svcVersion++;
+            } else {
+                this.textVersion++;
+            }
+        }
+
         public getVersion() {
             return this.svc
                 ? `SVC-${this.svcVersion}-${this.svc.getSnapshotVersion()}`
@@ -401,6 +410,11 @@ namespace ts.server {
         editContent(start: number, end: number, newText: string): void {
             this.textStorage.edit(start, end, newText);
             this.markContainingProjectsAsDirty();
+        }
+
+        useNextVersiomn() {
+            this.textStorage.useNextVersion();
+            this.markContainingProjectsAsDirty(); //or info.registerFileUpdate() ???
         }
 
         markContainingProjectsAsDirty() {

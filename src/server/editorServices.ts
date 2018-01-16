@@ -1796,10 +1796,13 @@ namespace ts.server {
                 }
             }
             else if (openedByClient && info.fileName !== fileName) {
-                this.handleDeletedFile(info);
+                info.fileName = fileName; //change case
+                info.useNextVersiomn();
+                //info.registerFileUpdate();
+                //this.handleDeletedFile(info);
                 //!!! We need to add the newly-created info to any configured projects. But that doesn't seem to happen.
                 //re-open with correct casing
-                return this.getOrCreateScriptInfoWorker(fileName, currentDirectory, openedByClient, fileContent, scriptKind, hasMixedContent, hostToQueryFileExistsOn);
+                //return this.getOrCreateScriptInfoWorker(fileName, currentDirectory, openedByClient, fileContent, scriptKind, hasMixedContent, hostToQueryFileExistsOn);
             }
 
             if (openedByClient && !info.isScriptOpen()) {

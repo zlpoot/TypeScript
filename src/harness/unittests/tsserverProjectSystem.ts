@@ -3499,13 +3499,19 @@ namespace ts.projectSystem {
             const host = createServerHost([file, file2], { useCaseSensitiveFileNames: false });
             const projectService = createProjectService(host);
             projectService.openClientFile(file.path);
+            projectService.checkNumberOfProjects({ configuredProjects: 1 });
+            checkProjectActualFiles(projectService.configuredProjects.get(file2.path)!, [file.path, file2.path]);
+
 
             const newPath = "/A.ts";
             host.renameFile(file.path, newPath);
             projectService.closeClientFile(file.path);
             projectService.openClientFile(newPath, file.content);
 
-            checkProjectActualFiles(projectService.inferredProjects[0], [newPath]);
+            projectService.configuredProjects.get(file2.path)!.updateGraph();
+
+            projectService.checkNumberOfProjects({ configuredProjects: 1 });
+            checkProjectActualFiles(projectService.configuredProjects.get(file2.path)!, [newPath, file2.path]);
         });
     });
 
