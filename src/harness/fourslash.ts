@@ -1,3 +1,4 @@
+fourslash.ts
 //
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //
@@ -1252,9 +1253,9 @@ Actual: ${stringify(fullActual)}`);
             assert.equal(actual, expected);
         }
 
-        public verifyQuickInfoAt(markerName: string, expectedText: string, expectedDocumentation?: string) {
+        public verifyQuickInfoAt(markerName: string, expectedText: string, expectedDocumentation?: string, options?: FourSlashInterface.VerifyQuickInfoAtOptions) {
             this.goToMarker(markerName);
-            this.verifyQuickInfoString(expectedText, expectedDocumentation);
+            this.verifyQuickInfoString(expectedText, expectedDocumentation, options);
         }
 
         public verifyQuickInfos(namesAndTexts: { [name: string]: string | [string, string] }) {
@@ -1273,7 +1274,7 @@ Actual: ${stringify(fullActual)}`);
             }
         }
 
-        public verifyQuickInfoString(expectedText: string, expectedDocumentation?: string) {
+        public verifyQuickInfoString(expectedText: string | undefined, expectedDocumentation?: string, options?: FourSlashInterface.VerifyQuickInfoAtOptions) {
             if (expectedDocumentation === "") {
                 throw new Error("Use 'undefined' instead");
             }
@@ -1283,6 +1284,9 @@ Actual: ${stringify(fullActual)}`);
 
             assert.equal(actualQuickInfoText, expectedText, this.messageAtLastKnownMarker("quick info text"));
             assert.equal(actualQuickInfoDocumentation, expectedDocumentation || "", this.assertionMessageAtLastKnownMarker("quick info doc"));
+            if (options && options.tags) { // TODO: always test tags
+                assert.deepEqual(actualQuickInfo.tags, options && options.tags);
+            }
         }
 
         public verifyQuickInfoDisplayParts(kind: string, kindModifiers: string, textSpan: { start: number; length: number; },
@@ -3984,8 +3988,8 @@ namespace FourSlashInterface {
             this.state.verifyQuickInfoString(expectedText, expectedDocumentation);
         }
 
-        public quickInfoAt(markerName: string, expectedText?: string, expectedDocumentation?: string) {
-            this.state.verifyQuickInfoAt(markerName, expectedText, expectedDocumentation);
+        public quickInfoAt(markerName: string, expectedText?: string, expectedDocumentation?: string, options?: VerifyQuickInfoAtOptions) {
+            this.state.verifyQuickInfoAt(markerName, expectedText, expectedDocumentation, options);
         }
 
         public quickInfos(namesAndTexts: { [name: string]: string }) {
@@ -4644,5 +4648,9 @@ namespace FourSlashInterface {
         name: string;
         source?: string;
         description: string;
+    }
+
+    export interface VerifyQuickInfoAtOptions {
+        tags: {}[];
     }
 }
