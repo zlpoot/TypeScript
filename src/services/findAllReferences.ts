@@ -104,7 +104,7 @@ namespace ts.FindAllReferences {
         const info = (() => {
             switch (def.type) {
                 case "symbol": {
-                    const { displayParts, kind } = getDefinitionKindAndDisplayParts(def.symbol, def.node, checker);
+                    const { displayParts, kind } = getDefinitionKindAndDisplayParts(def.symbol, checker);
                     const name = displayParts.map(p => p.text).join("");
                     return { name, kind, displayParts };
                 }
@@ -132,20 +132,22 @@ namespace ts.FindAllReferences {
             return undefined;
         }
 
-        const { node, name, kind, displayParts } = info;
-        const sourceFile = def.node.getSourceFile();
+        const { name, kind, displayParts } = info;
+        const node = def.type === "symbol" ? first(def.symbol.declarations) : def.node;
+        const sourceFile = node.getSourceFile();
         return {
             containerKind: ScriptElementKind.unknown,
             containerName: "",
             fileName: sourceFile.fileName,
             kind,
             name,
-            textSpan: createTextSpanFromNode(def.node, sourceFile),
+            textSpan: createTextSpanFromNode(node, sourceFile),
             displayParts
         };
     }
 
-    function getDefinitionKindAndDisplayParts(symbol: Symbol, node: Node, checker: TypeChecker): { displayParts: SymbolDisplayPart[], kind: ScriptElementKind } {
+    function getDefinitionKindAndDisplayParts(symbol: Symbol, checker: TypeChecker): { displayParts: SymbolDisplayPart[], kind: ScriptElementKind } {
+        const node = first(symbol.declarations);
         const { displayParts, symbolKind } =
             SymbolDisplay.getSymbolDisplayPartsDocumentationAndSymbolKind(checker, symbol, node.getSourceFile(), getContainerNode(node), node);
         return { displayParts, kind: symbolKind };
@@ -182,7 +184,7 @@ namespace ts.FindAllReferences {
     function implementationKindDisplayParts(node: ts.Node, checker: ts.TypeChecker): { kind: ScriptElementKind, displayParts: SymbolDisplayPart[] } {
         const symbol = checker.getSymbolAtLocation(isDeclaration(node) && node.name ? node.name : node);
         if (symbol) {
-            return getDefinitionKindAndDisplayParts(symbol, node, checker);
+            return getDefinitionKindAndDisplayParts(symbol, checker);
         }
         else if (node.kind === SyntaxKind.ObjectLiteralExpression) {
             return {
@@ -422,7 +424,7 @@ namespace ts.FindAllReferences.Core {
         /** If coming from an export, we will not recursively search for the imported symbol (since that's where we came from). */
         readonly comingFrom?: ImportExport;
 
-        readonly location: Node;
+        readonly location: Node; //used?
         readonly symbol: Symbol;
         readonly text: string;
         readonly escapedText: __String;
@@ -512,7 +514,7 @@ namespace ts.FindAllReferences.Core {
          * Callback to add references for a particular searched symbol.
          * This initializes a reference group, so only call this if you will add at least one reference.
          */
-        referenceAdder(searchSymbol: Symbol, searchLocation: Node): (node: Node) => void {
+        referenceAdder(searchSymbol: Symbol, _searchLocation: Node): (node: Node) => void { //!
             const symbolId = getSymbolId(searchSymbol);
             let references = this.symbolIdToReferences[symbolId];
             if (!references) {
