@@ -104,31 +104,27 @@ namespace ts.FindAllReferences {
         const info = (() => {
             switch (def.type) {
                 case "symbol": {
-                    const { symbol, node } = def;
-                    const { displayParts, kind } = getDefinitionKindAndDisplayParts(symbol, node, checker);
+                    const { displayParts, kind } = getDefinitionKindAndDisplayParts(def.symbol, def.node, checker);
                     const name = displayParts.map(p => p.text).join("");
-                    return { node, name, kind, displayParts };
+                    return { name, kind, displayParts };
                 }
                 case "label": {
-                    const { node } = def;
-                    return { node, name: node.text, kind: ScriptElementKind.label, displayParts: [displayPart(node.text, SymbolDisplayPartKind.text)] };
+                    const { node: { text } } = def;
+                    return { name: text, kind: ScriptElementKind.label, displayParts: [displayPart(text, SymbolDisplayPartKind.text)] };
                 }
                 case "keyword": {
-                    const { node } = def;
-                    const name = tokenToString(node.kind);
-                    return { node, name, kind: ScriptElementKind.keyword, displayParts: [{ text: name, kind: ScriptElementKind.keyword }] };
+                    const name = tokenToString(def.node.kind);
+                    return { name, kind: ScriptElementKind.keyword, displayParts: [{ text: name, kind: ScriptElementKind.keyword }] };
                 }
                 case "this": {
                     const { node } = def;
                     const symbol = checker.getSymbolAtLocation(node);
                     const displayParts = symbol && SymbolDisplay.getSymbolDisplayPartsDocumentationAndSymbolKind(
                         checker, symbol, node.getSourceFile(), getContainerNode(node), node).displayParts;
-                    return { node, name: "this", kind: ScriptElementKind.variableElement, displayParts };
+                    return { name: "this", kind: ScriptElementKind.variableElement, displayParts };
                 }
-                case "string": {
-                    const { node } = def;
-                    return { node, name: node.text, kind: ScriptElementKind.variableElement, displayParts: [displayPart(getTextOfNode(node), SymbolDisplayPartKind.stringLiteral)] };
-                }
+                case "string":
+                    return { name: def.node.text, kind: ScriptElementKind.variableElement, displayParts: [displayPart(def.node.getText(), SymbolDisplayPartKind.stringLiteral)] };
             }
         })();
 
@@ -136,15 +132,15 @@ namespace ts.FindAllReferences {
             return undefined;
         }
 
-        const { node, name, kind, displayParts } = info;
-        const sourceFile = node.getSourceFile();
+        const { name, kind, displayParts } = info;
+        const sourceFile = def.node.getSourceFile();
         return {
             containerKind: ScriptElementKind.unknown,
             containerName: "",
             fileName: sourceFile.fileName,
             kind,
             name,
-            textSpan: createTextSpanFromNode(node, sourceFile),
+            textSpan: createTextSpanFromNode(def.node, sourceFile),
             displayParts
         };
     }
