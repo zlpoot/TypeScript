@@ -8,11 +8,11 @@ namespace ts.FindAllReferences {
     }
 
     export type Definition =
-        | { type: "symbol"; symbol: Symbol; node: Node }
-        | { type: "label"; node: Identifier }
-        | { type: "keyword"; node: ts.Node }
-        | { type: "this"; node: ts.Node }
-        | { type: "string"; node: ts.StringLiteral };
+        | { type: "symbol"; symbol: Symbol } //should go to def for the symbol
+        | { type: "label"; node: Identifier } //this too -- should go to the original label...
+        | { type: "keyword"; node: ts.Node } //no real definition...
+        | { type: "this"; node: ts.Node } //should go to the definition for 'this'...
+        | { type: "string"; node: ts.StringLiteral }; //no real definition...
 
     export type Entry = NodeEntry | SpanEntry;
     export interface NodeEntry {
@@ -132,7 +132,7 @@ namespace ts.FindAllReferences {
             return undefined;
         }
 
-        const { name, kind, displayParts } = info;
+        const { node, name, kind, displayParts } = info;
         const sourceFile = def.node.getSourceFile();
         return {
             containerKind: ScriptElementKind.unknown,
@@ -314,7 +314,7 @@ namespace ts.FindAllReferences.Core {
         }
 
         return [{
-            definition: { type: "symbol", symbol, node: symbol.valueDeclaration },
+            definition: { type: "symbol", symbol },
             references
         }];
     }
@@ -517,7 +517,7 @@ namespace ts.FindAllReferences.Core {
             let references = this.symbolIdToReferences[symbolId];
             if (!references) {
                 references = this.symbolIdToReferences[symbolId] = [];
-                this.result.push({ definition: { type: "symbol", symbol: searchSymbol, node: searchLocation }, references });
+                this.result.push({ definition: { type: "symbol", symbol: searchSymbol }, references });
             }
             return node => references.push(nodeEntry(node));
         }
@@ -1296,7 +1296,7 @@ namespace ts.FindAllReferences.Core {
             }
         }
 
-        return [{ definition: { type: "symbol", symbol: searchSpaceNode.symbol, node: superKeyword }, references }];
+        return [{ definition: { type: "symbol", symbol: searchSpaceNode.symbol }, references }];
     }
 
     function getReferencesForThisKeyword(thisOrSuperKeyword: Node, sourceFiles: ReadonlyArray<SourceFile>, cancellationToken: CancellationToken): SymbolAndEntries[] {
