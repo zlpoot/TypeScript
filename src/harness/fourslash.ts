@@ -753,6 +753,15 @@ namespace FourSlash {
             });
         }
 
+        public verifyPreceding() {
+            for (const fileName of this.getProgram().getRootFileNames()) {
+                const file = this.getProgram().getSourceFile(fileName);
+                for (let i = 0; i < file.text.length; i++) {
+                    ts.findPrecedingToken(i, file);
+                }
+            };
+        }
+
         public verifyCompletionListCount(expectedCount: number, negative: boolean) {
             if (expectedCount === 0 && negative) {
                 this.verifyCompletionListIsEmpty(/*negative*/ false);
@@ -3870,6 +3879,8 @@ namespace FourSlashInterface {
                 this.not = new VerifyNegatable(state, true);
             }
         }
+
+        public preceding() { this.state.verifyPreceding(); }
 
         public completionListCount(expectedCount: number) {
             this.state.verifyCompletionListCount(expectedCount, this.negative);

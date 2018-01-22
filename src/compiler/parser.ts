@@ -4064,7 +4064,7 @@ namespace ts {
         function parseJsxChild(): JsxChild {
             switch (token()) {
                 case SyntaxKind.JsxText:
-                case SyntaxKind.JsxTextAllWhiteSpaces:
+                case SyntaxKind.JsxTextAllWhiteSpaces: //!
                     return parseJsxText();
                 case SyntaxKind.OpenBraceToken:
                     return parseJsxExpression(/*inExpressionContext*/ false);
@@ -4126,6 +4126,7 @@ namespace ts {
             if (token() === SyntaxKind.GreaterThanToken) {
                 parseExpected(SyntaxKind.GreaterThanToken);
                 const node: JsxOpeningFragment = <JsxOpeningFragment>createNode(SyntaxKind.JsxOpeningFragment, fullStart);
+                //should scanJsxText() here?
                 return finishNode(node);
             }
 

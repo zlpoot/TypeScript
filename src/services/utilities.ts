@@ -824,7 +824,7 @@ namespace ts {
                 const child = children[i];
 
                 if (isWhiteSpaceOnlyJsxText(child)) {
-                    Debug.assert(i > 0, "`JsxText` tokens should not be the first child of `JsxElement | JsxSelfClosingElement`");
+                    Debug.assert(i > 0, "A whitespace-only JsxText should never be the first child.");
                 }
                 else if (nodeHasTokens(children[i])) {
                     return children[i];
