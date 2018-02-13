@@ -349,75 +349,8 @@ F2();
             return imports;
         }
 
-        function assertEqual(node1?: Node, node2?: Node) {
-            if (node1 === undefined) {
-                assert.isUndefined(node2);
-                return;
-            }
-            else if (node2 === undefined) {
-                assert.isUndefined(node1); // Guaranteed to fail
-                return;
-            }
-
-            assert.equal(node1.kind, node2.kind);
-
-            switch (node1.kind) {
-                case SyntaxKind.ImportDeclaration:
-                    const decl1 = node1 as ImportDeclaration;
-                    const decl2 = node2 as ImportDeclaration;
-                    assertEqual(decl1.importClause, decl2.importClause);
-                    assertEqual(decl1.moduleSpecifier, decl2.moduleSpecifier);
-                    break;
-                case SyntaxKind.ImportClause:
-                    const clause1 = node1 as ImportClause;
-                    const clause2 = node2 as ImportClause;
-                    assertEqual(clause1.name, clause2.name);
-                    assertEqual(clause1.namedBindings, clause2.namedBindings);
-                    break;
-                case SyntaxKind.NamespaceImport:
-                    const nsi1 = node1 as NamespaceImport;
-                    const nsi2 = node2 as NamespaceImport;
-                    assertEqual(nsi1.name, nsi2.name);
-                    break;
-                case SyntaxKind.NamedImports:
-                    const ni1 = node1 as NamedImports;
-                    const ni2 = node2 as NamedImports;
-                    assertListEqual(ni1.elements, ni2.elements);
-                    break;
-                case SyntaxKind.ImportSpecifier:
-                    const is1 = node1 as ImportSpecifier;
-                    const is2 = node2 as ImportSpecifier;
-                    assertEqual(is1.name, is2.name);
-                    assertEqual(is1.propertyName, is2.propertyName);
-                    break;
-                case SyntaxKind.Identifier:
-                    const id1 = node1 as Identifier;
-                    const id2 = node2 as Identifier;
-                    assert.equal(id1.text, id2.text);
-                    break;
-                case SyntaxKind.StringLiteral:
-                case SyntaxKind.NoSubstitutionTemplateLiteral:
-                    const sl1 = node1 as LiteralLikeNode;
-                    const sl2 = node2 as LiteralLikeNode;
-                    assert.equal(sl1.text, sl2.text);
-                    break;
-                default:
-                    assert.equal(node1.getText(), node2.getText());
-                    break;
-            }
-        }
-
         function assertListEqual(list1: ReadonlyArray<Node>, list2: ReadonlyArray<Node>) {
-            if (list1 === undefined || list2 === undefined) {
-                assert.isUndefined(list1);
-                assert.isUndefined(list2);
-                return;
-            }
-
-            assert.equal(list1.length, list2.length);
-            for (let i = 0; i < list1.length; i++) {
-                assertEqual(list1[i], list2[i]);
-            }
+            textChanges.getFormattedTextOfNode(node, /*sourceFile*/ undefined, /*pos*/ 0, {}, NewLineKind.LineFeed, testFormatContext);
         }
 
         function reverse<T>(list: ReadonlyArray<T>) {

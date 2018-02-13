@@ -195,6 +195,8 @@ namespace ts.textChanges {
         formatContext: ts.formatting.FormatContext;
     }
 
+    export type Validator = (text: NonFormattedText) => void;
+
     export class ChangeTracker {
         private readonly changes: Change[] = [];
         private readonly newLineCharacter: string;
@@ -215,7 +217,7 @@ namespace ts.textChanges {
         constructor(
             private readonly newLine: NewLineKind,
             private readonly formatContext: ts.formatting.FormatContext,
-            private readonly validator?: (text: NonFormattedText) => void) {
+            private readonly validator?: Validator) {
             this.newLineCharacter = getNewLineCharacter({ newLine });
         }
 
@@ -650,29 +652,8 @@ namespace ts.textChanges {
             return (options.prefix || "") + text + (options.suffix || "");
         }
 
-        private getFormattedTextOfNode(node: Node, sourceFile: SourceFile, pos: number, options: ChangeNodeOptions): string {
-            const nonformattedText = getNonformattedText(node, sourceFile, this.newLine);
-            if (this.validator) {
-                this.validator(nonformattedText);
-            }
-
-            const { options: formatOptions } = this.formatContext;
-            const posStartsLine = getLineStartPositionForPosition(pos, sourceFile) === pos;
-
-            const initialIndentation =
-                options.indentation !== undefined
-                    ? options.indentation
-                    : (options.useIndentationFromFile !== false)
-                        ? formatting.SmartIndenter.getIndentation(pos, sourceFile, formatOptions, posStartsLine || (options.prefix === this.newLineCharacter))
-                        : 0;
-            const delta =
-                options.delta !== undefined
-                    ? options.delta
-                    : formatting.SmartIndenter.shouldIndentChildNode(node)
-                        ? (formatOptions.indentSize || 0)
-                        : 0;
-
-            return applyFormatting(nonformattedText, sourceFile, initialIndentation, delta, this.formatContext);
+        private getFormattedTextOfNode(node: Node, sourceFile: SourceFile, pos: number, options: ChangeNodeOptions) {
+            return getFormattedTextOfNode(node, sourceFile, pos, options, this.newLine, this.formatContext, this.validator);
         }
 
         private static normalize(changes: Change[]): Change[] {
@@ -689,6 +670,32 @@ namespace ts.textChanges {
     export interface NonFormattedText {
         readonly text: string;
         readonly node: Node;
+    }
+
+    export function getFormattedTextOfNode(node: Node, sourceFile: SourceFile | undefined, pos: number, options: ChangeNodeOptions, newLine: NewLineKind, formatContext: ts.formatting.FormatContext, validator?: Validator): string {
+        const nonformattedText = getNonformattedText(node, sourceFile, newLine);
+        if (validator) {
+            validator(nonformattedText);
+        }
+
+        const { options: formatOptions } = formatContext;
+        const posStartsLine = getLineStartPositionForPosition(pos, sourceFile) === pos;
+
+        const newLineCharacter = getNewLineCharacter({ newLine });
+        const initialIndentation =
+            options.indentation !== undefined
+                ? options.indentation
+                : (options.useIndentationFromFile !== false)
+                    ? formatting.SmartIndenter.getIndentation(pos, sourceFile, formatOptions, posStartsLine || (options.prefix === newLineCharacter))
+                    : 0;
+        const delta =
+            options.delta !== undefined
+                ? options.delta
+                : formatting.SmartIndenter.shouldIndentChildNode(node)
+                    ? (formatOptions.indentSize || 0)
+                    : 0;
+
+        return applyFormatting(nonformattedText, sourceFile, initialIndentation, delta, formatContext);
     }
 
     function getNonformattedText(node: Node, sourceFile: SourceFile | undefined, newLine: NewLineKind): NonFormattedText {

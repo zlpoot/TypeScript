@@ -88,6 +88,7 @@ namespace ts {
         placeOpenBraceOnNewLineForFunctions: false,
         placeOpenBraceOnNewLineForControlBlocks: false,
     };
+    export const testFormatContext = formatting.getFormatContext(testFormatOptions);
 
     const notImplementedHost: LanguageServiceHost = {
         getCompilationSettings: notImplemented,
