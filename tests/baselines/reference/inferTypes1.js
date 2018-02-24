@@ -11,7 +11,8 @@ type T02 = Unpacked<() => string>;  // string
 type T03 = Unpacked<Promise<string>>;  // string
 type T04 = Unpacked<Unpacked<Promise<string>[]>>;  // string
 type T05 = Unpacked<any>;  // any
-type T06 = Unpacked<never>;  // never
+type T06 = Unpacked<never>;  // unknown
+type T07 = Unpacked<unknown>;  // unknown
 
 function f1(s: string) {
     return { a: 1, b: s };
@@ -40,7 +41,7 @@ type U14 = InstanceType<Function>;  // Error
 
 type ArgumentType<T extends (x: any) => any> = T extends (a: infer A) => any ? A : any;
 
-type T20 = ArgumentType<() => void>;  // never
+type T20 = ArgumentType<() => void>;  // unknown
 type T21 = ArgumentType<(x: string) => number>;  // string
 type T22 = ArgumentType<(x?: string) => number>;  // string | undefined
 type T23 = ArgumentType<(...args: string[]) => number>;  // string
