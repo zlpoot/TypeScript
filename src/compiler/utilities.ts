@@ -758,6 +758,7 @@ namespace ts {
 
         switch (node.kind) {
             case SyntaxKind.AnyKeyword:
+            case SyntaxKind.UnknownKeyword:
             case SyntaxKind.NumberKeyword:
             case SyntaxKind.StringKeyword:
             case SyntaxKind.BooleanKeyword:
