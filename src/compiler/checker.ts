@@ -8693,7 +8693,7 @@ namespace ts {
          * This is used during inference when instantiating type parameter defaults.
          */
         function createBackreferenceMapper(typeParameters: TypeParameter[], index: number): TypeMapper {
-            return t => typeParameters.indexOf(t) >= index ? emptyObjectType : t;  // !!!
+            return t => typeParameters.indexOf(t) >= index ? unknownType : t;
         }
 
         function isInferenceContext(mapper: TypeMapper): mapper is InferenceContext {
