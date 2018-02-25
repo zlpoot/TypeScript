@@ -2,10 +2,10 @@ tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAnd
 tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(35,5): error TS2322: Type '9.9' is not assignable to type 'string'.
 tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(36,5): error TS2322: Type '9.9' is not assignable to type 'Date'.
 tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(38,5): error TS2322: Type '9.9' is not assignable to type 'void'.
-tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(40,5): error TS2322: Type 'D<{}>' is not assignable to type 'I'.
-  Property 'id' is missing in type 'D<{}>'.
-tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(41,5): error TS2322: Type 'D<{}>' is not assignable to type 'C'.
-  Property 'id' is missing in type 'D<{}>'.
+tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(40,5): error TS2322: Type 'D<unknown>' is not assignable to type 'I'.
+  Property 'id' is missing in type 'D<unknown>'.
+tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(41,5): error TS2322: Type 'D<unknown>' is not assignable to type 'C'.
+  Property 'id' is missing in type 'D<unknown>'.
 tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(42,5): error TS2322: Type 'C' is not assignable to type 'D<string>'.
   Property 'source' is missing in type 'C'.
 tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAndInvalidInitializer.ts(43,5): error TS2322: Type '{ id: string; }' is not assignable to type 'I'.
@@ -82,12 +82,12 @@ tests/cases/conformance/statements/VariableStatements/everyTypeWithAnnotationAnd
     
     var anInterface: I = new D();
         ~~~~~~~~~~~
-!!! error TS2322: Type 'D<{}>' is not assignable to type 'I'.
-!!! error TS2322:   Property 'id' is missing in type 'D<{}>'.
+!!! error TS2322: Type 'D<unknown>' is not assignable to type 'I'.
+!!! error TS2322:   Property 'id' is missing in type 'D<unknown>'.
     var aClass: C = new D();
         ~~~~~~
-!!! error TS2322: Type 'D<{}>' is not assignable to type 'C'.
-!!! error TS2322:   Property 'id' is missing in type 'D<{}>'.
+!!! error TS2322: Type 'D<unknown>' is not assignable to type 'C'.
+!!! error TS2322:   Property 'id' is missing in type 'D<unknown>'.
     var aGenericClass: D<string> = new C();
         ~~~~~~~~~~~~~
 !!! error TS2322: Type 'C' is not assignable to type 'D<string>'.

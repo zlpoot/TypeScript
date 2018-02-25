@@ -55,12 +55,12 @@ var b = new C0 32, ''; // Parse error
 
 // Generic construct expression with no parentheses
 var c1 = new T;
->c1 : T<{}>
->new T : T<{}>
+>c1 : T<unknown>
+>new T : T<unknown>
 >T : typeof T
 
 var c1: T<{}>;
->c1 : T<{}>
+>c1 : T<unknown>
 >T : T<T>
 
 var c2 = new T<string>; // Parse error

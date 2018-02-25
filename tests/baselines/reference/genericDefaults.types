@@ -79,7 +79,7 @@ declare function f01<T>(a?: T): T;
 
 // inference
 f01();
->f01() : {}
+>f01() : unknown
 >f01 : <T>(a?: T) => T
 
 f01(a);
@@ -208,7 +208,7 @@ declare function f04<T, U = B>(a?: T, b?: U): [T, U];
 
 // inference
 f04();
->f04() : [{}, B]
+>f04() : [unknown, B]
 >f04 : <T, U = B>(a?: T, b?: U) => [T, U]
 
 f04(a);
@@ -305,7 +305,7 @@ declare function f05<T, U = T>(a?: T, b?: U): [T, U];
 
 // inference
 f05();
->f05() : [{}, {}]
+>f05() : [unknown, unknown]
 >f05 : <T, U = T>(a?: T, b?: U) => [T, U]
 
 f05(a);
@@ -514,7 +514,7 @@ declare function f07<T, U = B, V = U>(a?: T, b?: U, c?: V): [T, U, V];
 
 // inference
 f07();
->f07() : [{}, B, B]
+>f07() : [unknown, B, B]
 >f07 : <T, U = B, V = U>(a?: T, b?: U, c?: V) => [T, U, V]
 
 f07(a, b);
@@ -806,7 +806,7 @@ declare function f09<T, U extends T = T>(a?: T, b?: U): [T, U];
 
 // inference
 f09();
->f09() : [{}, {}]
+>f09() : [unknown, unknown]
 >f09 : <T, U extends T = T>(a?: T, b?: U) => [T, U]
 
 f09(a);
@@ -1004,7 +1004,7 @@ declare function f11<T, U = T | B>(a?: T, b?: U): [T, U];
 
 // inference
 f11();
->f11() : [{}, {} | B]
+>f11() : [unknown, unknown]
 >f11 : <T, U = B | T>(a?: T, b?: U) => [T, U]
 
 f11(a);
@@ -1094,7 +1094,7 @@ declare function f12<T, U = T & B>(a?: T, b?: U): [T, U];
 
 // inference
 f12();
->f12() : [{}, B]
+>f12() : [unknown, B]
 >f12 : <T, U = T & B>(a?: T, b?: U) => [T, U]
 
 f12(a);
@@ -1266,7 +1266,7 @@ declare function f14<T, U = V, V = C>(a?: T, b?: U, c?: V): [T, U, V];
 
 // inference
 f14();
->f14() : [{}, unknown, C]
+>f14() : [unknown, unknown, C]
 >f14 : <T, U = V, V = C>(a?: T, b?: U, c?: V) => [T, U, V]
 
 f14(a);
@@ -1296,25 +1296,25 @@ f14(a, b, d);
 
 // no inference, partially supplied
 f14<A>();
->f14<A>() : [A, {}, C]
+>f14<A>() : [A, unknown, C]
 >f14 : <T, U = V, V = C>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 
 f14<A>(a);
->f14<A>(a) : [A, {}, C]
+>f14<A>(a) : [A, unknown, C]
 >f14 : <T, U = V, V = C>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
 
 f14<A>(a, b);
->f14<A>(a, b) : [A, {}, C]
+>f14<A>(a, b) : [A, unknown, C]
 >f14 : <T, U = V, V = C>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
 >b : B
 
 f14<A>(a, b, c);
->f14<A>(a, b, c) : [A, {}, C]
+>f14<A>(a, b, c) : [A, unknown, C]
 >f14 : <T, U = V, V = C>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
@@ -1477,7 +1477,7 @@ declare function f16<T, U = V, V = U>(a?: T, b?: U, c?: V): [T, U, V];
 
 // no inference
 f16();
->f16() : [{}, unknown, unknown]
+>f16() : [unknown, unknown, unknown]
 >f16 : <T, U = V, V = U>(a?: T, b?: U, c?: V) => [T, U, V]
 
 f16(a);
@@ -1500,25 +1500,25 @@ f16(a, b, b);
 
 // no inference, partially supplied
 f16<A>();
->f16<A>() : [A, {}, {}]
+>f16<A>() : [A, unknown, unknown]
 >f16 : <T, U = V, V = U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 
 f16<A>(a);
->f16<A>(a) : [A, {}, {}]
+>f16<A>(a) : [A, unknown, unknown]
 >f16 : <T, U = V, V = U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
 
 f16<A>(a, b);
->f16<A>(a, b) : [A, {}, {}]
+>f16<A>(a, b) : [A, unknown, unknown]
 >f16 : <T, U = V, V = U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
 >b : B
 
 f16<A>(a, b, b);
->f16<A>(a, b, b) : [A, {}, {}]
+>f16<A>(a, b, b) : [A, unknown, unknown]
 >f16 : <T, U = V, V = U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
@@ -1702,7 +1702,7 @@ declare function f18<T, U = V, V = U | C>(a?: T, b?: U, c?: V): [T, U, V];
 
 // inference
 f18();
->f18() : [{}, unknown, unknown]
+>f18() : [unknown, unknown, unknown]
 >f18 : <T, U = V, V = C | U>(a?: T, b?: U, c?: V) => [T, U, V]
 
 f18(a);
@@ -1732,25 +1732,25 @@ f18(a, b, c);
 
 // no inference, partially supplied
 f18<A>();
->f18<A>() : [A, {}, {} | C]
+>f18<A>() : [A, unknown, unknown]
 >f18 : <T, U = V, V = C | U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 
 f18<A>(a);
->f18<A>(a) : [A, {}, {} | C]
+>f18<A>(a) : [A, unknown, unknown]
 >f18 : <T, U = V, V = C | U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
 
 f18<A>(a, b);
->f18<A>(a, b) : [A, {}, {} | C]
+>f18<A>(a, b) : [A, unknown, unknown]
 >f18 : <T, U = V, V = C | U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
 >b : B
 
 f18<A>(a, b, b);
->f18<A>(a, b, b) : [A, {}, {} | C]
+>f18<A>(a, b, b) : [A, unknown, unknown]
 >f18 : <T, U = V, V = C | U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
@@ -1758,7 +1758,7 @@ f18<A>(a, b, b);
 >b : B
 
 f18<A>(a, b, c);
->f18<A>(a, b, c) : [A, {}, {} | C]
+>f18<A>(a, b, c) : [A, unknown, unknown]
 >f18 : <T, U = V, V = C | U>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
@@ -1950,7 +1950,7 @@ declare function f20<T, U = V, V = U & C>(a?: T, b?: U, c?: V): [T, U, V];
 
 // inference
 f20();
->f20() : [{}, unknown, C]
+>f20() : [unknown, unknown, C]
 >f20 : <T, U = V, V = U & C>(a?: T, b?: U, c?: V) => [T, U, V]
 
 f20(a);
@@ -1973,25 +1973,25 @@ f20(a, b, c);
 
 // no inference, partially supplied
 f20<A>();
->f20<A>() : [A, {}, C]
+>f20<A>() : [A, unknown, C]
 >f20 : <T, U = V, V = U & C>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 
 f20<A>(a);
->f20<A>(a) : [A, {}, C]
+>f20<A>(a) : [A, unknown, C]
 >f20 : <T, U = V, V = U & C>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
 
 f20<A>(a, b);
->f20<A>(a, b) : [A, {}, C]
+>f20<A>(a, b) : [A, unknown, C]
 >f20 : <T, U = V, V = U & C>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
 >b : B
 
 f20<A>(a, b, bc);
->f20<A>(a, b, bc) : [A, {}, C]
+>f20<A>(a, b, bc) : [A, unknown, C]
 >f20 : <T, U = V, V = U & C>(a?: T, b?: U, c?: V) => [T, U, V]
 >A : A
 >a : A
@@ -2247,13 +2247,13 @@ interface i05<T = T> { a: T; }
 >T : T
 
 const i05c00 = (<i05>x).a;
->i05c00 : {}
->(<i05>x).a : {}
->(<i05>x) : i05<{}>
-><i05>x : i05<{}>
+>i05c00 : unknown
+>(<i05>x).a : unknown
+>(<i05>x) : i05<unknown>
+><i05>x : i05<unknown>
 >i05 : i05<T>
 >x : any
->a : {}
+>a : unknown
 
 const i05c01 = (<i05<number>>x).a;
 >i05c01 : number
@@ -2275,13 +2275,13 @@ interface i06<T = U, U = T> { a: [T, U]; }
 >U : U
 
 const i06c00 = (<i06>x).a;
->i06c00 : [{}, {}]
->(<i06>x).a : [{}, {}]
->(<i06>x) : i06<{}, {}>
-><i06>x : i06<{}, {}>
+>i06c00 : [unknown, unknown]
+>(<i06>x).a : [unknown, unknown]
+>(<i06>x) : i06<unknown, unknown>
+><i06>x : i06<unknown, unknown>
 >i06 : i06<T, U>
 >x : any
->a : [{}, {}]
+>a : [unknown, unknown]
 
 const i06c01 = (<i06<number>>x).a;
 >i06c01 : [number, number]
@@ -2397,8 +2397,8 @@ declare class Derived01<T> extends Base01<T> { }
 >T : T
 
 const Derived01c00 = new Derived01();
->Derived01c00 : Derived01<{}>
->new Derived01() : Derived01<{}>
+>Derived01c00 : Derived01<unknown>
+>new Derived01() : Derived01<unknown>
 >Derived01 : typeof Derived01
 
 const Derived01c01 = new Derived01(1);

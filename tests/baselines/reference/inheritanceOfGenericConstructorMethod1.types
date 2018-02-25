@@ -16,8 +16,8 @@ var a = new A<Date>();
 >Date : Date
 
 var b1 = new B(); // no error
->b1 : B<{}>
->new B() : B<{}>
+>b1 : B<unknown>
+>new B() : B<unknown>
 >B : typeof B
 
 var b2: B<Date> = new B<Date>(); // no error

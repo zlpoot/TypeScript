@@ -9,8 +9,8 @@ class C<T> {
 }
 
 var c = new C();
->c : C<{}>
->new C() : C<{}>
+>c : C<unknown>
+>new C() : C<unknown>
 >C : typeof C
 
 var c2 = new C<any>();
@@ -77,7 +77,7 @@ function foo<T>(): T { return null; };
 >null : null
 
 foo() 
->foo() : {}
+>foo() : unknown
 >foo : <T>() => T
 
 foo<any>();

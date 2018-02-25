@@ -1,5 +1,5 @@
 tests/cases/compiler/genericFunctionCallSignatureReturnTypeMismatch.ts(6,1): error TS2322: Type '<S>() => S[]' is not assignable to type '<T>(x: T) => T'.
-  Type '{}[]' is not assignable to type 'T'.
+  Type 'unknown[]' is not assignable to type 'T'.
 tests/cases/compiler/genericFunctionCallSignatureReturnTypeMismatch.ts(10,1): error TS2304: Cannot find name 'console'.
 
 
@@ -12,7 +12,7 @@ tests/cases/compiler/genericFunctionCallSignatureReturnTypeMismatch.ts(10,1): er
     f = g;
     ~
 !!! error TS2322: Type '<S>() => S[]' is not assignable to type '<T>(x: T) => T'.
-!!! error TS2322:   Type '{}[]' is not assignable to type 'T'.
+!!! error TS2322:   Type 'unknown[]' is not assignable to type 'T'.
     
     var s = f("str").toUpperCase();
     
