@@ -92,7 +92,7 @@ type T11 = ReturnType<(s: string) => void>;  // void
 >s : string
 
 type T12 = ReturnType<(<T>() => T)>;  // {}
->T12 : {}
+>T12 : unknown
 >ReturnType : ReturnType<T>
 >T : T
 >T : T
