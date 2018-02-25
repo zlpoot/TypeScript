@@ -6945,7 +6945,7 @@ namespace ts {
             const typeParameters = signature.typeParameters;
             if (typeParameters) {
                 const typeEraser = createTypeEraser(typeParameters);
-                const baseConstraints = map(typeParameters, tp => instantiateType(getBaseConstraintOfType(tp), typeEraser) || emptyObjectType);
+                const baseConstraints = map(typeParameters, tp => instantiateType(getBaseConstraintOfType(tp), typeEraser) || emptyObjectType);  // !!!
                 return instantiateSignature(signature, createTypeMapper(typeParameters, baseConstraints), /*eraseTypeParameters*/ true);
             }
             return signature;
@@ -8693,7 +8693,7 @@ namespace ts {
          * This is used during inference when instantiating type parameter defaults.
          */
         function createBackreferenceMapper(typeParameters: TypeParameter[], index: number): TypeMapper {
-            return t => typeParameters.indexOf(t) >= index ? emptyObjectType : t;
+            return t => typeParameters.indexOf(t) >= index ? emptyObjectType : t;  // !!!
         }
 
         function isInferenceContext(mapper: TypeMapper): mapper is InferenceContext {
@@ -9094,7 +9094,7 @@ namespace ts {
         function isTypeDerivedFrom(source: Type, target: Type): boolean {
             return source.flags & TypeFlags.Union ? every((<UnionType>source).types, t => isTypeDerivedFrom(t, target)) :
                 target.flags & TypeFlags.Union ? some((<UnionType>target).types, t => isTypeDerivedFrom(source, t)) :
-                source.flags & TypeFlags.InstantiableNonPrimitive ? isTypeDerivedFrom(getBaseConstraintOfType(source) || emptyObjectType, target) :
+                source.flags & TypeFlags.InstantiableNonPrimitive ? isTypeDerivedFrom(getBaseConstraintOfType(source) || unknownType, target) :
                 target === globalObjectType || target === globalFunctionType ? isTypeSubtypeOf(source, target) :
                 hasBaseType(source, getTargetType(target));
             }
@@ -11467,7 +11467,7 @@ namespace ts {
             const templateType = getTemplateTypeFromMappedType(target);
             const inference = createInferenceInfo(typeParameter);
             inferTypes([inference], sourceType, templateType);
-            return getTypeFromInference(inference) || emptyObjectType;
+            return getTypeFromInference(inference) || emptyObjectType;  // !!!
         }
 
         function getUnmatchedProperty(source: Type, target: Type, requireOptionalProperties: boolean) {
@@ -11916,7 +11916,7 @@ namespace ts {
         }
 
         function getDefaultTypeArgumentType(isInJavaScriptFile: boolean): Type {
-            return isInJavaScriptFile ? anyType : emptyObjectType;
+            return isInJavaScriptFile ? anyType : emptyObjectType;  // !!!
         }
 
         function getInferredTypes(context: InferenceContext): Type[] {
@@ -13336,7 +13336,7 @@ namespace ts {
         }
 
         function typeHasNullableConstraint(type: Type) {
-            return type.flags & TypeFlags.InstantiableNonPrimitive && maybeTypeOfKind(getBaseConstraintOfType(type) || emptyObjectType, TypeFlags.Nullable);
+            return type.flags & TypeFlags.InstantiableNonPrimitive && maybeTypeOfKind(getBaseConstraintOfType(type) || unknownType, TypeFlags.Nullable);
         }
 
         function getConstraintForLocation(type: Type, node: Node) {
@@ -17522,7 +17522,7 @@ namespace ts {
             // In an untyped function call no TypeArgs are permitted, Args can be any argument list, no contextual
             // types are provided for the argument expressions, and the result is always of type Any.
             if (isUntypedFunctionCall(funcType, apparentType, callSignatures.length, constructSignatures.length)) {
-                // The unknownType indicates that an error already occurred (and was reported).  No
+                // The errorType indicates that an error already occurred (and was reported).  No
                 // need to report another error in this case.
                 if (funcType !== errorType && node.typeArguments) {
                     error(node, Diagnostics.Untyped_function_calls_may_not_accept_type_arguments);
@@ -18231,16 +18231,16 @@ namespace ts {
             const globalPromiseType = getGlobalPromiseType(/*reportErrors*/ true);
             if (globalPromiseType !== emptyGenericType) {
                 // if the promised type is itself a promise, get the underlying type; otherwise, fallback to the promised type
-                promisedType = getAwaitedType(promisedType) || emptyObjectType;
+                promisedType = getAwaitedType(promisedType) || emptyObjectType;  // !!!
                 return createTypeReference(globalPromiseType, [promisedType]);
             }
 
-            return emptyObjectType;
+            return emptyObjectType;  // !!!
         }
 
         function createPromiseReturnType(func: FunctionLikeDeclaration | ImportCall, promisedType: Type) {
             const promiseType = createPromiseType(promisedType);
-            if (promiseType === emptyObjectType) {
+            if (promiseType === emptyObjectType) {  // !!!
                 error(func, isImportCall(func) ?
                     Diagnostics.A_dynamic_import_call_returns_a_Promise_Make_sure_you_have_a_declaration_for_Promise_or_include_ES2015_in_your_lib_option :
                     Diagnostics.An_async_function_or_method_must_return_a_Promise_Make_sure_you_have_a_declaration_for_Promise_or_include_ES2015_in_your_lib_option);
@@ -19462,7 +19462,7 @@ namespace ts {
                     // If the contextual type is a type variable constrained to a primitive type, consider
                     // this a literal context for literals of that primitive type. For example, given a
                     // type parameter 'T extends string', infer string literal types for T.
-                    const constraint = getBaseConstraintOfType(contextualType) || emptyObjectType;
+                    const constraint = getBaseConstraintOfType(contextualType) || unknownType;
                     return constraint.flags & TypeFlags.String && maybeTypeOfKind(candidateType, TypeFlags.StringLiteral) ||
                         constraint.flags & TypeFlags.Number && maybeTypeOfKind(candidateType, TypeFlags.NumberLiteral) ||
                         constraint.flags & TypeFlags.Boolean && maybeTypeOfKind(candidateType, TypeFlags.BooleanLiteral) ||
@@ -22162,7 +22162,7 @@ namespace ts {
                 if (varExpr.kind === SyntaxKind.ArrayLiteralExpression || varExpr.kind === SyntaxKind.ObjectLiteralExpression) {
                     // iteratedType may be undefined. In this case, we still want to check the structure of
                     // varExpr, in particular making sure it's a valid LeftHandSideExpression. But we'd like
-                    // to short circuit the type relation checking as much as possible, so we pass the unknownType.
+                    // to short circuit the type relation checking as much as possible, so we pass the errorType.
                     checkDestructuringAssignment(varExpr, iteratedType || errorType);
                 }
                 else {
@@ -22221,7 +22221,7 @@ namespace ts {
                 }
             }
 
-            // unknownType is returned i.e. if node.expression is identifier whose name cannot be resolved
+            // errorType is returned i.e. if node.expression is identifier whose name cannot be resolved
             // in this case error about missing name is already reported - do not report extra one
             if (!isTypeAssignableToKind(rightType, TypeFlags.NonPrimitive | TypeFlags.InstantiableNonPrimitive)) {
                 error(node.expression, Diagnostics.The_right_hand_side_of_a_for_in_statement_must_be_of_type_any_an_object_type_or_a_type_parameter);
