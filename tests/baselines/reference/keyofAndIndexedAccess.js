@@ -1122,7 +1122,7 @@ declare type Handlers<T> = {
 };
 declare function on<T>(handlerHash: Handlers<T>): T;
 declare var hashOfEmpty1: {
-    test: {};
+    test: unknown;
 };
 declare var hashOfEmpty2: {
     test: boolean;
