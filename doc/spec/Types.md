@@ -123,13 +123,18 @@ The only possible values for the Void type are `null` and `undefined`. The Void 
 
 *NOTE: We might consider disallowing declaring variables of type Void as they serve no useful purpose. However, because Void is permitted as a type argument to a generic type or function it is not feasible to disallow Void properties or parameters*.
 
-### The Null Type { #the-null-type }
+### Unit Types { #unit-types }
+
+Unit types are types with a single value.
+The unit types in TypeScript are `null`, `undefined`, enum member types, string literal types, number literal types, and boolean literal types.
+
+#### The Null Type { #the-null-type }
 
 The `null` literal references the one and only value of the Null type. The `null` keyword references the Null type.
 
 The only possible value for the Null type is `null`, except when strict null checks are turned off, as described in [#sec-strict-null-checks].
 
-### The Undefined Type { #the-undefined-type }
+#### The Undefined Type { #the-undefined-type }
 
 The Undefined type corresponds to the similarly named JavaScript primitive type and is the type of the `undefined` literal.
 
@@ -138,11 +143,59 @@ The `undefined` keyword references the Undefined type.
 
 The only possible value for the Undefined type is `undefined`, except when strict null checks are turned off, as described in [#sec-strict-null-checks].
 
+#### Literal types { #literal-types }
+
+TypeScript supports string, number, and boolean literal types.
+
+Literal types use the syntax of their respective literal values and have the identities of their respective literal values.
+For example, `10` and `1e1` are the same type, even though the two are written differently.
+In the same way, `'a'` and `"a"` are the same type.
+
+Literal types are subclasses of their respective base primitive type:
+
+* The supertype of the literal types `true` and `false` is the Boolean primitive type.
+* The supertype of numeric literal types is the Number primitive type.
+* The supertype of string literal types is the String primitive type.
+
+Literal types can be used as discriminants for narrowing.
+This combination allows the construction of algebraic data types:
+
+```ts
+interface Square {
+    kind: "square";
+    size: number;
+}
+interface Rectangle {
+    kind: "rectangle";
+    width: number;
+    height: number;
+}
+interface Circle {
+    kind: "circle";
+    radius: number;
+}
+type Shape = Square | Rectangle | Circle;
+function area(s: Shape) {
+    switch (s.kind) {
+        case "square": return s.size * s.size;
+        case "rectangle": return s.height * s.width;
+        case "circle": return Math.PI * s.radius ** 2;
+    }
+}
+```
+
 ### Enum Types { #enum-types }
 
 Enum types are distinct user defined subtypes of the Number primitive type. Enum types are declared using enum declarations (section [#enum-declarations]<!--9.1-->) and referenced using type references (section [#type-references]<!--3.8.2-->).
 
 Enum types are assignable to the Number primitive type, and vice versa, but different enum types are not assignable to each other.
+
+*TODO: This section should be updated to discuss:*
+1. Normal versus Const enums
+2. Computed versus Union enums
+3. Exceptions to enum nominality
+4. Union enums in detail
+5. Enum type relations to the number type.
 
 ### String Literal Types { #string-literal-types }
 
@@ -1462,16 +1515,49 @@ In several situations TypeScript infers types from context, alleviating the need
 var name = "Steve";
 ```
 
-infers the type of 'name' to be the String primitive type since that is the type of the value used to initialize it. When inferring the type of a variable, property or function result from an expression, the ***widened*** form of the source type is used as the inferred type of the target. The widened form of a type is the type in which all occurrences of the Null and Undefined types have been replaced with the type `any`.
+infers the type of 'name' to be the String primitive type since that is the type of the value used to initialize it.
+When inferring the type of a variable, property or function result from an expression, the ***widened*** form of the source type is used as the inferred type of the target.
+The widened form of a type is the type in which all literal types have been replaced with their base primitive types, according to the following rule:
 
-The following example shows the results of widening types to produce inferred variable types.
+If the type is:
+* A string literal type, the result is the String type
+* A number literal type, the result is the Number type.
+* A boolean literal type, the result is the Boolean type.
+* A union type, the result is the widened type of each of its members.
+* Any other type, the result is the original type.
 
-```TypeScript
-var a = null;                 // var a: any
-var b = undefined;            // var b: any
-var c = { x: 0, y: null };    // var c: { x: number, y: any }
-var d = [ null, undefined ];  // var d: any[]
+Literal types widen in the following locations:
+
+* The right-hand side of a compound assignment.
+* The right-hand side of any assignment to a variable with an evolving type.
+* An expression that adds an element type to an evolving array type. (see [#evolving-array-types])
+
+Literal types that arise from expressions, except the expression of a case clause, widen in the following locations:
+
+* An argument to an immediately invoked function expression (IIFE) widens before providing the contextual type to the IIFE's parameter.
+* Declaration initializers, except for `const` declarations, `readonly` declarations that are not parameter properties, or initializers that are type assertions.
+* The returned expression of a function, unless the expression is contextually typed by a related literal type.
+* Property assignments and shorthand property assignments in object literals, unless the assignment is contextually typed by a related literal type.
+* Elements in an array literal, unless the element is contextually typed by a related literal type.
+
+An expression with a literal type is contextually typed by a related literal type when the contextual type is:
+* a literal of the same base type as the expression,
+* or a union or intersection, and some element is a related literal type,
+* or a constrained type parameter, and the constraint is a related literal type.
+
+Notice that the origin of the *type* determines whether it widens or not.
+That means widening may happen at some distance from the expression that created the type.
+For example:
+
+```ts
+const one = 1; // 'one' has type: 1
+let num = one; // 'num has type: number
+
+const zero: 0 = 0; // 'zero' has type: 0
+let origin = zero; // 'origin'
 ```
 
-<br/>
+In the first example, `one` has the type `1` because the literal type from the expression `1` does not widen; it is the initializer of a const declaration.
+However, `num` has the type `number` because the type of `one` is a literal type from an expression, and `num` is not declared const.
+In the second example, `origin` has the type `0` because the literal type `0` of `zero` comes from the type annotation on the declaration.
 
