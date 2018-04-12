@@ -1093,7 +1093,7 @@ namespace ts.FindAllReferences.Core {
 
         if (refNode.parent.kind === SyntaxKind.ShorthandPropertyAssignment) {
             // Go ahead and dereference the shorthand assignment by going to its definition
-            getReferenceEntriesForShorthandPropertyAssignment(refNode, state.checker, addReference);
+            //getReferenceEntriesForShorthandPropertyAssignment(refNode, state.checker, addReference);
         }
 
         // Check if the node is within an extends or implements clause
