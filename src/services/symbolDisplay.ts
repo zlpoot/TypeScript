@@ -9,8 +9,9 @@ namespace ts.SymbolDisplay {
 
         const flags = getCombinedLocalAndExportSymbolFlags(symbol);
         if (flags & SymbolFlags.Class) {
-            return getDeclarationOfKind(symbol, SyntaxKind.ClassExpression) ?
-                ScriptElementKind.localClassElement : ScriptElementKind.classElement;
+            const callExpressionLike = getCallExpressionLike(climbParentPropertyAccesses(location), symbol);
+            return callExpressionLike && shouldUseConstructSignatures(callExpressionLike) ? ScriptElementKind.constructorImplementationElement
+                : getDeclarationOfKind(symbol, SyntaxKind.ClassExpression) ? ScriptElementKind.localClassElement : ScriptElementKind.classElement;
         }
         if (flags & SymbolFlags.Enum) return ScriptElementKind.enumElement;
         if (flags & SymbolFlags.TypeAlias) return ScriptElementKind.typeElement;
@@ -146,31 +147,15 @@ namespace ts.SymbolDisplay {
             let signature: Signature;
             type = isThisExpression ? typeChecker.getTypeAtLocation(location) : typeChecker.getTypeOfSymbolAtLocation(symbol.exportSymbol || symbol, location);
 
-            if (location.parent && location.parent.kind === SyntaxKind.PropertyAccessExpression) {
-                const right = (<PropertyAccessExpression>location.parent).name;
-                // Either the location is on the right of a property access, or on the left and the right is missing
-                if (right === location || (right && right.getFullWidth() === 0)) {
-                    location = location.parent;
-                }
-            }
+            location = climbParentPropertyAccesses(location);
 
             // try get the call/construct signature from the type if it matches
-            let callExpressionLike: CallExpression | NewExpression | JsxOpeningLikeElement;
-            if (isCallOrNewExpression(location)) {
-                callExpressionLike = location;
-            }
-            else if (isCallExpressionTarget(location) || isNewExpressionTarget(location)) {
-                callExpressionLike = <CallExpression | NewExpression>location.parent;
-            }
-            else if (location.parent && isJsxOpeningLikeElement(location.parent) && isFunctionLike(symbol.valueDeclaration)) {
-                callExpressionLike = location.parent;
-            }
-
+            const callExpressionLike = getCallExpressionLike(location, symbol);
             if (callExpressionLike) {
                 const candidateSignatures: Signature[] = [];
                 signature = typeChecker.getResolvedSignature(callExpressionLike, candidateSignatures);
 
-                const useConstructSignatures = callExpressionLike.kind === SyntaxKind.NewExpression || (isCallExpression(callExpressionLike) && callExpressionLike.expression.kind === SyntaxKind.SuperKeyword);
+                const useConstructSignatures = shouldUseConstructSignatures(callExpressionLike);
 
                 const allSignatures = useConstructSignatures ? type.getConstructSignatures() : type.getCallSignatures();
 
@@ -650,5 +635,32 @@ namespace ts.SymbolDisplay {
             // parent is in function block
             return true;
         });
+    }
+
+    type CallExpressionLike = CallExpression | NewExpression | JsxOpeningLikeElement | undefined;
+    function getCallExpressionLike(location: Node, symbol: Symbol): CallExpressionLike {
+        if (isCallOrNewExpression(location)) {
+            return location;
+        }
+        else if (isCallExpressionTarget(location) || isNewExpressionTarget(location)) {
+            return <CallExpression | NewExpression>location.parent;
+        }
+        else if (location.parent && isJsxOpeningLikeElement(location.parent) && isFunctionLike(symbol.valueDeclaration)) {
+            return location.parent;
+        }
+    }
+    function shouldUseConstructSignatures(callExpressionLike: CallExpressionLike): boolean {
+        return callExpressionLike.kind === SyntaxKind.NewExpression || (isCallExpression(callExpressionLike) && callExpressionLike.expression.kind === SyntaxKind.SuperKeyword);
+    }
+
+    function climbParentPropertyAccesses(node: Node): Node {
+        if (node.parent && isPropertyAccessExpression(node.parent)) {
+            const { name } = node.parent;
+            // Either the location is on the right of a property access, or on the left and the right is missing
+            if (node === name || (name && name.getFullWidth() === 0)) {
+                return node.parent;
+            }
+        }
+        return node;
     }
 }

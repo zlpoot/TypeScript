@@ -916,8 +916,7 @@ namespace FourSlash {
                 const actualDetails = this.getCompletionEntryDetails(actual.name, actual.source);
                 assert.equal(ts.displayPartsToString(actualDetails.displayParts), text);
                 assert.equal(ts.displayPartsToString(actualDetails.documentation), documentation || "");
-                // TODO: GH#23587
-                // assert.equal(actualDetails.kind, actual.kind);
+                assert.equal(actualDetails.kind, actual.kind);
                 assert.equal(actualDetails.kindModifiers, actual.kindModifiers);
                 assert.equal(actualDetails.source && ts.displayPartsToString(actualDetails.source), sourceDisplay);
             }
