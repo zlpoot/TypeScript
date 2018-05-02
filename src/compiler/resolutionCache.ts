@@ -113,6 +113,7 @@ namespace ts {
         const directoryWatchesOfFailedLookups = createMap<DirectoryWatchesOfFailedLookup>();
         const rootDir = rootDirForResolution && removeTrailingDirectorySeparator(getNormalizedAbsolutePath(rootDirForResolution, getCurrentDirectory()));
         const rootPath = (rootDir && resolutionHost.toPath(rootDir)) as Path; // TODO: GH#18217
+        resolutionHost.writeLog(`ResolutionCache:: Creating resolution cache with root: ${rootDir}`);
 
         // TypeRoot watches for the types that get added as part of getAutomaticTypeDirectiveNames
         const typeRootsWatches = createMap<FileWatcher>();
@@ -273,6 +274,7 @@ namespace ts {
                     else {
                         resolution = loader(name, containingFile, compilerOptions, resolutionHost);
                         perDirectoryResolution.set(name, resolution);
+                        resolutionHost.writeLog(`ResolutionCache:: FailedLookupLocations for '${name}' from '${containingFile}':\n${JSON.stringify(resolution.failedLookupLocations)}\n\n`);
                     }
                     resolutionsInFile.set(name, resolution);
                     watchFailedLookupLocationOfResolution(resolution);
@@ -343,6 +345,10 @@ namespace ts {
             return cache && cache.get(moduleName);
         }
 
+        function isInNodeModulesDirectory(dirPath: Path) {
+            return stringContains(dirPath, nodeModulesPathPart);
+        }
+
         function isNodeModulesDirectory(dirPath: Path) {
             return endsWith(dirPath, "/node_modules");
         }
@@ -407,7 +413,7 @@ namespace ts {
 
         function getDirectoryToWatchFromFailedLookupLocationDirectory(dir: string, dirPath: Path) {
             // If directory path contains node module, get the most parent node_modules directory for watching
-            while (stringContains(dirPath, "/node_modules/")) {
+            while (isInNodeModulesDirectory(dirPath)) {
                 dir = getDirectoryPath(dir);
                 dirPath = getDirectoryPath(dirPath);
             }
@@ -485,6 +491,7 @@ namespace ts {
             if (dirWatcher) {
                 Debug.assert(!!nonRecursive === !!dirWatcher.nonRecursive);
                 dirWatcher.refCount++;
+                resolutionHost.writeLog(`ResolutionCache:: Using existing directoryWatcher for ${dir}`);
             }
             else {
                 directoryWatchesOfFailedLookups.set(dirPath, { watcher: createDirectoryWatcher(dir, dirPath, nonRecursive), refCount: 1, nonRecursive });
@@ -548,6 +555,9 @@ namespace ts {
                 if (!allFilesHaveInvalidatedResolution && invalidateResolutionOfFailedLookupLocation(fileOrDirectoryPath, dirPath === fileOrDirectoryPath)) {
                     resolutionHost.onInvalidatedResolution();
                 }
+                else {
+                    resolutionHost.writeLog(`ResolutionCache:: Ignored watch for '${fileOrDirectory}' AllFilesHaveInvalidatedResolution: ${allFilesHaveInvalidatedResolution}`);
+                }
             }, nonRecursive ? WatchDirectoryFlags.None : WatchDirectoryFlags.Recursive);
         }
 
@@ -570,23 +580,31 @@ namespace ts {
             isInvalidatedResolution: (resolution: T, getResolutionWithResolvedFileName: GetResolutionWithResolvedFileName<T, R>) => boolean,
             getResolutionWithResolvedFileName: GetResolutionWithResolvedFileName<T, R>
         ) {
-            const seen = createMap<Map<true>>();
+            const seen = createMap<Map<boolean>>();
             cache.forEach((resolutions, containingFilePath) => {
                 const dirPath = getDirectoryPath(containingFilePath);
                 let seenInDir = seen.get(dirPath);
                 if (!seenInDir) {
-                    seenInDir = createMap<true>();
+                    seenInDir = createMap();
                     seen.set(dirPath, seenInDir);
                 }
                 resolutions.forEach((resolution, name) => {
                     if (seenInDir!.has(name)) {
+                        if (!resolution.isInvalidated && seenInDir!.get(name)) {
+                            resolutionHost.writeLog(`ResolutionCache:: Invalidation mismatch '${name}' from '${containingFilePath}' is not invalidated but same resolution is invalidated in directory '${dirPath}'`);
+                        }
                         return;
                     }
-                    seenInDir!.set(name, true);
+
                     if (!resolution.isInvalidated && isInvalidatedResolution(resolution, getResolutionWithResolvedFileName)) {
+                        resolutionHost.writeLog(`ResolutionCache:: Invalidating '${name}' from '${containingFilePath}'`);
+                        seenInDir!.set(name, true);
                         // Mark the file as needing re-evaluation of module resolution instead of using it blindly.
                         resolution.isInvalidated = true;
                         (filesWithInvalidatedResolutions || (filesWithInvalidatedResolutions = createMap<true>())).set(containingFilePath, true);
+                    }
+                    else {
+                        seenInDir!.set(name, false);
                     }
                 });
             });
@@ -632,6 +650,7 @@ namespace ts {
                 // Watching directory is created
                 // Invalidate any resolution has failed lookup in this directory
                 isChangedFailedLookupLocation = location => isInDirectoryPath(fileOrDirectoryPath, resolutionHost.toPath(location));
+                resolutionHost.writeLog(`ResolutionCache:: Invalidating anything in path: ${fileOrDirectoryPath}`);
             }
             else {
                 // Some file or directory in the watching directory is created
@@ -644,17 +663,21 @@ namespace ts {
                         const locationPath = resolutionHost.toPath(location);
                         return locationPath === fileOrDirectoryPath || startsWith(resolutionHost.toPath(location), fileOrDirectoryPath);
                     };
+                    resolutionHost.writeLog(`ResolutionCache:: Invalidating anything that starts with: ${fileOrDirectoryPath}`);
                 }
                 else {
                     if (!isPathWithDefaultFailedLookupExtension(fileOrDirectoryPath) && !customFailedLookupPaths.has(fileOrDirectoryPath)) {
+                        resolutionHost.writeLog("ResolutionCache:: Ignored invalidation because of extension");
                         return false;
                     }
                     // Ignore emits from the program
                     if (isEmittedFileOfProgram(resolutionHost.getCurrentProgram(), fileOrDirectoryPath)) {
+                        resolutionHost.writeLog("ResolutionCache:: Ignored invalidation because of emitted file of current program");
                         return false;
                     }
                     // Resolution need to be invalidated if failed lookup location is same as the file or directory getting created
                     isChangedFailedLookupLocation = location => resolutionHost.toPath(location) === fileOrDirectoryPath;
+                    resolutionHost.writeLog(`ResolutionCache:: Invalidating anything that has failed lookup location: ${fileOrDirectoryPath}`);
                 }
             }
             const hasChangedFailedLookupLocation = (resolution: ResolutionWithFailedLookupLocations) => some(resolution.failedLookupLocations, isChangedFailedLookupLocation);
