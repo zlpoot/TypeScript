@@ -2797,6 +2797,21 @@ namespace ts {
         /* @internal */ getResolvedModuleWithFailedLookupLocationsFromCache(moduleName: string, containingFile: string): ResolvedModuleWithFailedLookupLocations | undefined;
 
         getProjectReferences(): (ResolvedProjectReference | undefined)[] | undefined;
+
+        exceedsSizeLimit(): boolean;
+        /* @internal */ getSizeExceededInformation(): ProgramSizeInformation | undefined;
+    }
+
+    export interface ProgramSizeInformation {
+        lastFileExceededProgramSize?: string;
+        largestFiles?: ReadonlyArray<LargeFileSizeInformation>;
+        totalNonTsFileSize: number;
+        maxNonTsProgramSize: number;
+    }
+
+    export interface LargeFileSizeInformation {
+        fileName: string;
+        size: number;
     }
 
     export interface ResolvedProjectReference {
@@ -3040,8 +3055,6 @@ namespace ts {
         /* @internal */ getGlobalDiagnostics(): Diagnostic[];
         /* @internal */ getEmitResolver(sourceFile?: SourceFile, cancellationToken?: CancellationToken): EmitResolver;
 
-        /* @internal */ getNodeCount(): number;
-        /* @internal */ getIdentifierCount(): number;
         /* @internal */ getSymbolCount(): number;
         /* @internal */ getTypeCount(): number;
 
@@ -4504,6 +4517,7 @@ namespace ts {
         host?: CompilerHost;
         oldProgram?: Program;
         configFileParsingDiagnostics?: ReadonlyArray<Diagnostic>;
+        maxNonTsProgramSize?: number;
     }
 
     /* @internal */
@@ -4826,6 +4840,7 @@ namespace ts {
         getModifiedTime?(fileName: string): Date | undefined;
         setModifiedTime?(fileName: string, date: Date): void;
         deleteFile?(fileName: string): void;
+        getFileSize?(path: string): number;
     }
 
     /* @internal */

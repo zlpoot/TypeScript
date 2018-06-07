@@ -3781,6 +3781,18 @@
         "category": "Error",
         "code": 6371
     },
+    "Non TypeScript file size '{0}' exceeded limit '{1}'.": {
+        "category": "Error",
+        "code": 6372
+    },
+    "Largest non TypeScript files: '{0}'": {
+        "category": "Message",
+        "code": 6373
+    },
+    "Last file seen when checking size: '{0}'": {
+        "category": "Message",
+        "code": 6374
+    },
 
     "The expected type comes from property '{0}' which is declared here on type '{1}'": {
         "category": "Message",
