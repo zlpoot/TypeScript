@@ -72,6 +72,7 @@ namespace ts {
     }
 
     export const maxNumberOfFilesToIterateForInvalidation = 256;
+    const notWatchedResolutionRefCount = -1;
 
     type GetResolutionWithResolvedFileName<T extends ResolutionWithFailedLookupLocations = ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName = ResolutionWithResolvedFileName> =
         (resolution: T) => R | undefined;
@@ -278,7 +279,7 @@ namespace ts {
                         perDirectoryResolution.set(name, resolution);
                     }
                     resolutionsInFile.set(name, resolution);
-                    watchFailedLookupLocationsOfExternalModuleResolutions(name, resolution);
+                    watchFailedLookupLocationsOfExternalModuleResolutions(name, resolution, getResolutionWithResolvedFileName);
                     if (existingResolution) {
                         stopWatchFailedLookupLocationOfResolution(existingResolution);
                     }
@@ -444,26 +445,49 @@ namespace ts {
             return fileExtensionIsOneOf(path, failedLookupDefaultExtensions);
         }
 
-        function watchFailedLookupLocationsOfExternalModuleResolutions(name: string, resolution: ResolutionWithFailedLookupLocations) {
+        function canWatchResolution<T extends ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName>(resolution: T, getResolutionWithResolvedFileName: GetResolutionWithResolvedFileName<T, R>) {
             // No need to set the resolution refCount
-            if (resolution.failedLookupLocations && resolution.failedLookupLocations.length) {
-                if (resolution.refCount) {
+            if (!resolution.failedLookupLocations || !resolution.failedLookupLocations.length) {
+                return false;
+            }
+
+            const resolved = getResolutionWithResolvedFileName(resolution);
+            if (!resolved || !resolved.resolvedFileName) {
+                return true;
+            }
+
+            // Assume resolutions as non changing if file resolved is ts or json
+            // Or allowjs /allownon ts extensions is true
+            return !resolutionExtensionIsTypeScriptOrJson(extensionFromPath(resolved.resolvedFileName)) &&
+                !resolutionHost.getCompilationSettings().allowJs &&
+                !resolutionHost.getCompilationSettings().allowNonTsExtensions;
+        }
+
+        function watchFailedLookupLocationsOfExternalModuleResolutions<T extends ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName>(name: string, resolution: T, getResolutionWithResolvedFileName: GetResolutionWithResolvedFileName<T, R>) {
+            if (resolution.refCount) {
+                // If watched resolution, add ref count
+                if (resolution.refCount !== notWatchedResolutionRefCount) {
                     resolution.refCount++;
                 }
-                else {
-                    resolution.refCount = 1;
-                    if (isExternalModuleNameRelative(name)) {
-                        watchFailedLookupLocationOfResolution(resolution);
-                    }
-                    else {
-                        nonRelativeExternalModuleResolutions.add(name, resolution);
-                    }
-                }
+                return;
+            }
+
+            if (!canWatchResolution(resolution, getResolutionWithResolvedFileName)) {
+                setResolutionToNotWatched(resolution);
+                return;
+            }
+
+            resolution.refCount = 1;
+            if (isExternalModuleNameRelative(name)) {
+                watchFailedLookupLocationOfResolution(resolution);
+            }
+            else {
+                nonRelativeExternalModuleResolutions.add(name, resolution);
             }
         }
 
         function watchFailedLookupLocationOfResolution(resolution: ResolutionWithFailedLookupLocations) {
-            Debug.assert(!!resolution.refCount);
+            Debug.assert(!!resolution.refCount && resolution.refCount !== notWatchedResolutionRefCount);
 
             const { failedLookupLocations } = resolution;
             let setAtRoot = false;
@@ -492,13 +516,14 @@ namespace ts {
             }
         }
 
-        function setRefCountToUndefined(resolution: ResolutionWithFailedLookupLocations) {
-            resolution.refCount = undefined;
+        function setResolutionToNotWatched(resolution: ResolutionWithFailedLookupLocations) {
+             // Do not watch this resolution, ref count to -1
+            resolution.refCount = notWatchedResolutionRefCount;
         }
 
         function watchFailedLookupLocationOfNonRelativeModuleResolutions(resolutions: ResolutionWithFailedLookupLocations[], name: string) {
             const updateResolution = resolutionHost.getCurrentProgram().getTypeChecker().tryFindAmbientModuleWithoutAugmentations(name) ?
-                setRefCountToUndefined : watchFailedLookupLocationOfResolution;
+                setResolutionToNotWatched : watchFailedLookupLocationOfResolution;
             resolutions.forEach(updateResolution);
         }
 
@@ -514,7 +539,7 @@ namespace ts {
         }
 
         function stopWatchFailedLookupLocationOfResolution(resolution: ResolutionWithFailedLookupLocations) {
-            if (!resolution.refCount) {
+            if (!resolution.refCount || resolution.refCount === notWatchedResolutionRefCount) {
                 return;
             }
 
