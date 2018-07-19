@@ -982,6 +982,7 @@ namespace ts {
             }
 
             function readFile(fileName: string, _encoding?: string): string | undefined {
+                if (etwLogger) etwLogger.logEvent("ReadFile: " + fileName);
                 if (!fileExists(fileName)) {
                     return undefined;
                 }
@@ -1011,6 +1012,7 @@ namespace ts {
             }
 
             function writeFile(fileName: string, data: string, writeByteOrderMark?: boolean): void {
+                if (etwLogger) etwLogger.logEvent("WriteFile: " + fileName);
                 // If a BOM is required, emit one
                 if (writeByteOrderMark) {
                     data = byteOrderMarkIndicator + data;
@@ -1030,6 +1032,7 @@ namespace ts {
             }
 
             function getAccessibleFileSystemEntries(path: string): FileSystemEntries {
+                if (etwLogger) etwLogger.logEvent("ReadDir: " + (path || "."));
                 try {
                     const entries = _fs.readdirSync(path || ".").sort();
                     const files: string[] = [];
@@ -1091,6 +1094,7 @@ namespace ts {
             }
 
             function getDirectories(path: string): string[] {
+                if (etwLogger) etwLogger.logEvent("ReadDir: " + path);
                 return filter<string>(_fs.readdirSync(path), dir => fileSystemEntryExists(combinePaths(path, dir), FileSystemEntryKind.Directory));
             }
 

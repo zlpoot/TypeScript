@@ -4,6 +4,32 @@ namespace ts {
     export const versionMajorMinor = "3.0";
     /** The version of the TypeScript compiler release */
     export const version = `${versionMajorMinor}.1`;
+
+    // Attempt to load the native ETW logging module where possible
+    export var etwLogger: {
+        logEvent(msg: string): void;
+        logStartCommand(command: string, msg: string): void;
+        logStopCommand(command: string, msg: string): void;
+        logStartUpdateProgram(msg: string): void;
+        logStopUpdateProgram(msg: string): void;
+        logStartUpdateGraph(): void;
+        logStopUpdateGraph(): void;
+    } | undefined;
+    // Currently only building the native logging for 32-bit Node.js
+    if (process && process.arch && process.arch === "ia32") {
+        // Ensure Node.js version 10.1 or later
+        if (process.versions && process.versions.node) {
+            let nodeVersionParts = process.versions.node.split('.');
+            if (parseInt(nodeVersionParts[0]) >= 10 && parseInt(nodeVersionParts[1]) >= 1) {
+                try {
+                    etwLogger = require("./ia32/tsetwlog.node");
+                    if (etwLogger) etwLogger.logEvent(`tsserver.js ${version} starting on Node.js ${process.versions.node}`);
+                } catch(ex){
+                    // Ignore failure to load. It's OK if the native logging module is not present.
+                }
+			}
+        }
+    };
 }
 
 namespace ts {

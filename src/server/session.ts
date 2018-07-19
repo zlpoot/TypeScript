@@ -2288,6 +2288,7 @@ namespace ts.server {
             let request: protocol.Request | undefined;
             try {
                 request = <protocol.Request>JSON.parse(message);
+                if (etwLogger) etwLogger.logStartCommand("" + request.command, message.substring(0, 100));
                 const { response, responseRequired } = this.executeCommand(request);
 
                 if (this.logger.hasLevel(LogLevel.requestTime)) {
@@ -2306,11 +2307,13 @@ namespace ts.server {
                 else if (responseRequired) {
                     this.doOutput(/*info*/ undefined, request.command, request.seq, /*success*/ false, "No content available.");
                 }
+                if (etwLogger) etwLogger.logStopCommand("" + request.command, "success");
             }
             catch (err) {
                 if (err instanceof OperationCanceledException) {
                     // Handle cancellation exceptions
                     this.doOutput({ canceled: true }, request!.command, request!.seq, /*success*/ true);
+                    if (etwLogger) etwLogger.logStopCommand("" + (request && request.command), "Canceled: " + err);
                     return;
                 }
                 this.logError(err, message);
@@ -2320,6 +2323,7 @@ namespace ts.server {
                     request ? request.seq : 0,
                     /*success*/ false,
                     "Error processing request. " + (<StackTraceError>err).message + "\n" + (<StackTraceError>err).stack);
+                if (etwLogger) etwLogger.logStopCommand("" + (request && request.command), "Error: " + err);
             }
         }
 
