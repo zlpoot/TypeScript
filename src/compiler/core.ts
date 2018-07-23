@@ -8,6 +8,9 @@ namespace ts {
     // Attempt to load the native ETW logging module where possible
     export var etwLogger: {
         logEvent(msg: string): void;
+        logErrEvent(msg: string): void;
+        logPerfEvent(msg: string): void;
+        logInfoEvent(msg: string): void;
         logStartCommand(command: string, msg: string): void;
         logStopCommand(command: string, msg: string): void;
         logStartUpdateProgram(msg: string): void;
@@ -16,11 +19,11 @@ namespace ts {
         logStopUpdateGraph(): void;
     } | undefined;
     // Currently only building the native logging for 32-bit Node.js
-    if (process && process.arch && process.arch === "ia32") {
-        // Ensure Node.js version 10.1 or later
+    if (process && process.arch === "ia32" && process.platform === "win32") {
+        // Ensure Node.js. The N-API usage in the module requires Node.js 10.2 or later
         if (process.versions && process.versions.node) {
             let nodeVersionParts = process.versions.node.split('.');
-            if (parseInt(nodeVersionParts[0]) >= 10 && parseInt(nodeVersionParts[1]) >= 1) {
+            if (parseInt(nodeVersionParts[0]) === 10 && parseInt(nodeVersionParts[1]) >= 2 || parseInt(nodeVersionParts[0]) > 10) {
                 try {
                     etwLogger = require("./ia32/tsetwlog.node");
                     if (etwLogger) etwLogger.logEvent(`tsserver.js ${version} starting on Node.js ${process.versions.node}`);
