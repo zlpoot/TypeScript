@@ -10209,8 +10209,8 @@ namespace ts {
 
         function combineTypeMappers(mapper1: TypeMapper | undefined, mapper2: TypeMapper): TypeMapper;
         function combineTypeMappers(mapper1: TypeMapper, mapper2: TypeMapper | undefined): TypeMapper;
-        function combineTypeMappers(mapper1: TypeMapper, mapper2: TypeMapper): TypeMapper {
-            if (!mapper1) return mapper2;
+        function combineTypeMappers(mapper1: TypeMapper | undefined, mapper2: TypeMapper | undefined): TypeMapper {
+            if (!mapper1) return mapper2!;
             if (!mapper2) return mapper1;
             return t => instantiateType(mapper1(t), mapper2);
         }
@@ -15784,7 +15784,7 @@ namespace ts {
 
         function getConstraintForLocation(type: Type, node: Node): Type;
         function getConstraintForLocation(type: Type | undefined, node: Node): Type | undefined;
-        function getConstraintForLocation(type: Type, node: Node): Type | undefined {
+        function getConstraintForLocation(type: Type | undefined, node: Node): Type | undefined {
             // When a node is the left hand expression of a property access, element access, or call expression,
             // and the type of the node includes type variables with constraints that are nullable, we fetch the
             // apparent type of the node *before* performing control flow analysis such that narrowings apply to

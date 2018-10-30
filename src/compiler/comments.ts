@@ -412,7 +412,7 @@ namespace ts {
             }
         }
 
-        function writeComment(text: string, lineMap: number[], writer: EmitTextWriter, commentPos: number, commentEnd: number, newLine: string) {
+        function writeComment(text: string, lineMap: ReadonlyArray<number>, writer: EmitTextWriter, commentPos: number, commentEnd: number, newLine: string) {
             if (!shouldWriteComment(currentText, commentPos)) return;
             if (emitPos) emitPos(commentPos);
             writeCommentRange(text, lineMap, writer, commentPos, commentEnd, newLine);

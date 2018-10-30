@@ -11,9 +11,7 @@
         "composite": true,
         "noEmitOnError": true,
 
-        "strictNullChecks": true,
-        "noImplicitAny": true,
-        "noImplicitThis": true,
+        "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
 

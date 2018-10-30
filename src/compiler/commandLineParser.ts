@@ -1136,7 +1136,7 @@ namespace ts {
     }
 
     function getDiagnosticText(_message: DiagnosticMessage, ..._args: any[]): string {
-        const diagnostic = createCompilerDiagnostic.apply(undefined, arguments);
+        const diagnostic = createCompilerDiagnostic.apply(undefined, arguments as any as [DiagnosticMessage, ...any[]]);
         return <string>diagnostic.messageText;
     }
 
