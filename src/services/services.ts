@@ -2113,6 +2113,11 @@ namespace ts {
             return refactor.getEditsForRefactor(getRefactorContext(file, positionOrRange, preferences, formatOptions), refactorName, actionName);
         }
 
+        function getOriginDocumentSpan(originInfo: OriginInfo): DocumentSpan | undefined {
+            synchronizeHostData();
+            return GoToDefinition.getOriginDocumentSpan(program, originInfo);
+        }
+
         return {
             dispose,
             cleanupSemanticCache,
@@ -2168,6 +2173,7 @@ namespace ts {
             getEditsForRefactor,
             toLineColumnOffset: sourceMapper.toLineColumnOffset,
             getSourceMapper: () => sourceMapper,
+            getOriginDocumentSpan
         };
     }
 

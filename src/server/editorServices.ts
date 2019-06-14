@@ -2593,6 +2593,13 @@ namespace ts.server {
             }
         }
 
+        /*@internal*/
+        getOriginalProjectUsingOriginInfo(originInfo: OriginInfo, generatedName: string) {
+            const configFileName = toNormalizedPath(originInfo.origin.config);
+            return this.findConfiguredProjectByProjectName(configFileName) ||
+                this.createAndLoadConfiguredProject(configFileName, `Creating project for original file: ${originInfo.origin.source || originInfo.origin.config} for location: ${generatedName}`);
+        }
+
         /** @internal */
         fileExists(fileName: NormalizedPath): boolean {
             return !!this.getScriptInfoForNormalizedPath(fileName) || this.host.fileExists(fileName);

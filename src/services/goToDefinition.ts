@@ -15,7 +15,7 @@ namespace ts.GoToDefinition {
         // Labels
         if (isJumpStatementTarget(node)) {
             const label = getTargetLabel(node.parent, node.text);
-            return label ? [createDefinitionInfoFromName(label, ScriptElementKind.label, node.text, /*containerName*/ undefined!)] : undefined; // TODO: GH#18217
+            return label ? [createDefinitionInfoFromName(label, ScriptElementKind.label, node.text, /*containerName*/ undefined!, program.getTypeChecker())] : undefined; // TODO: GH#18217
         }
 
         const typeChecker = program.getTypeChecker();
@@ -94,6 +94,56 @@ namespace ts.GoToDefinition {
             }
         }
         return getDefinitionFromSymbol(typeChecker, symbol, node);
+    }
+
+    export function getOriginDocumentSpan(program: Program, originInfo: OriginInfo): DocumentSpan | undefined {
+        const lastDecl = lastOrUndefined(originInfo.declarations);
+        if (!lastDecl) return undefined;
+        let parentSymbol: Symbol | undefined;
+        // External module
+        if (lastDecl.kind === SyntaxKind.SourceFile) {
+            const sourceFile = program.getSourceFile(Debug.assertDefined(originInfo.origin.source));
+            if (sourceFile && isExternalModule(sourceFile)) {
+                parentSymbol = sourceFile.symbol;
+            }
+        }
+        // TODO handle --out with external modules
+        // From global
+        else {
+            parentSymbol = program.getTypeChecker().getGlobalSymbol(last(originInfo.declarations).name, SymbolFlags.All, /*diagnostic*/ undefined);
+        }
+
+        if (!parentSymbol || !parentSymbol.declarations.length) return undefined;
+
+        const result = findMatchingChild(originInfo.declarations, originInfo.declarations.length - 1, parentSymbol.declarations, program.getTypeChecker());
+        if (!result || !result.length) return undefined;
+
+        const declaration = first(result);
+        const sourceFile = declaration.getSourceFile();
+        const name = getNameOfDeclaration(declaration) || declaration;
+        const textSpan = createTextSpanFromNode(name, sourceFile);
+        return {
+            fileName: sourceFile.fileName,
+            textSpan,
+            ...FindAllReferences.toContextSpan(
+                textSpan,
+                sourceFile,
+                FindAllReferences.getContextNode(declaration)
+            ),
+        };
+    }
+
+    function findMatchingChild(declInfos: ReadonlyArray<OriginInfoDeclaration>, parentIndex: number, parentDeclarations: ReadonlyArray<Declaration>, checker: TypeChecker): ReadonlyArray<Declaration> | undefined {
+        if (parentIndex === 0) return parentDeclarations;
+        const declInfo = declInfos[parentIndex - 1];
+        return forEach(parentDeclarations, parent => forEachChild(parent,
+            child => child.kind === declInfo.kind &&
+                child.symbol &&
+                child.symbol.getEscapedName() == declInfo.name &&
+                SymbolDisplay.getSymbolKind(checker, child.symbol, child) === declInfo.symbolKind ?
+                findMatchingChild(declInfos, parentIndex - 1, child.symbol.declarations, checker) :
+                undefined
+        ));
     }
 
     /**
@@ -266,11 +316,11 @@ namespace ts.GoToDefinition {
         const symbolName = checker.symbolToString(symbol); // Do not get scoped name, just the name of the symbol
         const symbolKind = SymbolDisplay.getSymbolKind(checker, symbol, node);
         const containerName = symbol.parent ? checker.symbolToString(symbol.parent, node) : "";
-        return createDefinitionInfoFromName(declaration, symbolKind, symbolName, containerName);
+        return createDefinitionInfoFromName(declaration, symbolKind, symbolName, containerName, checker);
     }
 
     /** Creates a DefinitionInfo directly from the name of a declaration. */
-    function createDefinitionInfoFromName(declaration: Declaration, symbolKind: ScriptElementKind, symbolName: string, containerName: string): DefinitionInfo {
+    function createDefinitionInfoFromName(declaration: Declaration, symbolKind: ScriptElementKind, symbolName: string, containerName: string, checker: TypeChecker): DefinitionInfo {
         const name = getNameOfDeclaration(declaration) || declaration;
         const sourceFile = name.getSourceFile();
         const textSpan = createTextSpanFromNode(name, sourceFile);
@@ -285,8 +335,26 @@ namespace ts.GoToDefinition {
                 textSpan,
                 sourceFile,
                 FindAllReferences.getContextNode(declaration)
-            )
+            ),
+            ...getOriginInfo(declaration, checker)
         };
+    }
+
+    export function getOriginInfo(node: Node, checker: TypeChecker): { originInfo: OriginInfo; } | undefined {
+        const origin = checker.getProjectReferenceOriginalInfo(node.getSourceFile());
+        if (!origin) return undefined;
+
+        const declaration = findAncestor(node, isDeclaration);
+        if (!declaration) return undefined;
+        const declarations: OriginInfoDeclaration[] = [];
+        forEachAncestor(declaration, d => {
+            if (d.symbol) {
+                const symbolKind = SymbolDisplay.getSymbolKind(checker, d.symbol, d);
+
+                declarations.push({ kind: d.kind, symbolKind, name: d.symbol.getEscapedName() });
+            }
+        });
+        return { originInfo: { origin, declarations } };
     }
 
     function createDefinitionFromSignatureDeclaration(typeChecker: TypeChecker, decl: SignatureDeclaration): DefinitionInfo {

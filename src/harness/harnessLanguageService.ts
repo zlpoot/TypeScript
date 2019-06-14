@@ -568,6 +568,9 @@ namespace Harness.LanguageService {
         getEmitOutput(fileName: string): ts.EmitOutput {
             return unwrapJSONCallResult(this.shim.getEmitOutput(fileName));
         }
+        getOriginDocumentSpan(): never {
+            throw new Error("Not supported on the shim.");
+        }
         getProgram(): ts.Program {
             throw new Error("Program can not be marshaled across the shim layer.");
         }

@@ -2990,6 +2990,7 @@ namespace ts {
         getProjectReferences(): ReadonlyArray<ProjectReference> | undefined;
         getResolvedProjectReferences(): ReadonlyArray<ResolvedProjectReference | undefined> | undefined;
         /*@internal*/ getProjectReferenceRedirect(fileName: string): string | undefined;
+        /*@internal*/ getProjectReferenceOriginalInfo(file: SourceFile): ProjectReferenceOriginInfo | undefined;
         /*@internal*/ getResolvedProjectReferenceToRedirect(fileName: string): ResolvedProjectReference | undefined;
         /*@internal*/ forEachResolvedProjectReference<T>(cb: (resolvedProjectReference: ResolvedProjectReference | undefined, resolvedProjectReferencePath: Path) => T | undefined): T | undefined;
         /*@internal*/ getResolvedProjectReferenceByPath(projectReferencePath: Path): ResolvedProjectReference | undefined;
@@ -3090,6 +3091,7 @@ namespace ts {
         getSourceFile(fileName: string): SourceFile | undefined;
         getResolvedTypeReferenceDirectives(): ReadonlyMap<ResolvedTypeReferenceDirective | undefined>;
         getProjectReferenceRedirect(fileName: string): string | undefined;
+        getProjectReferenceOriginalInfo(file: SourceFile): ProjectReferenceOriginInfo | undefined;
 
         readonly redirectTargetsMap: RedirectTargetsMap;
     }
@@ -3323,6 +3325,14 @@ namespace ts {
         runWithCancellationToken<T>(token: CancellationToken, cb: (checker: TypeChecker) => T): T;
 
         /* @internal */ getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol: Symbol): ReadonlyArray<TypeParameter> | undefined;
+        /* @internal */ getProjectReferenceOriginalInfo(file: SourceFile): ProjectReferenceOriginInfo | undefined;
+        /* @internal */ getGlobalSymbol(name: __String, meaning: SymbolFlags, diagnostic: DiagnosticMessage | undefined): Symbol | undefined;
+    }
+
+    /* @internal */
+    export interface ProjectReferenceOriginInfo {
+        config: string;
+        source?: string;
     }
 
     /* @internal */

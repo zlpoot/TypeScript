@@ -491,6 +491,19 @@ namespace ts.server {
     }
 
     function getMappedDocumentSpan(documentSpan: DocumentSpan, project: Project): DocumentSpan | undefined {
+        if (documentSpan.originInfo) {
+            const newProject = project.projectService.getOriginalProjectUsingOriginInfo(documentSpan.originInfo, documentSpan.fileName);
+            const span = newProject.getLanguageService().getOriginDocumentSpan(documentSpan.originInfo);
+            if (span) {
+                return {
+                    ...span,
+                    originalFileName: documentSpan.fileName,
+                    originalTextSpan: documentSpan.textSpan,
+                    originalContextSpan: documentSpan.contextSpan
+                };
+            }
+        }
+
         const newPosition = getMappedLocation(documentSpanLocation(documentSpan), project);
         if (!newPosition) return undefined;
         return {
@@ -983,6 +996,7 @@ namespace ts.server {
                 const newDocumentSpan = getMappedDocumentSpan(info, project);
                 return !newDocumentSpan ? info : {
                     ...newDocumentSpan,
+                
                     containerKind: info.containerKind,
                     containerName: info.containerName,
                     kind: info.kind,

@@ -944,6 +944,7 @@ namespace ts {
             getProjectReferences,
             getResolvedProjectReferences,
             getProjectReferenceRedirect,
+            getProjectReferenceOriginalInfo,
             getResolvedProjectReferenceToRedirect,
             getResolvedProjectReferenceByPath,
             forEachResolvedProjectReference,
@@ -2370,6 +2371,40 @@ namespace ts {
             }
         }
 
+        function getProjectReferenceOriginalInfo(file: SourceFile): ProjectReferenceOriginInfo | undefined {
+            if (!resolvedProjectReferences || !resolvedProjectReferences.length || !file.isDeclarationFile) return undefined;
+            // If this file was mapped to dts because of project reference, we already have info
+            if (file.path !== file.resolvedPath) {
+                const referencedProjectPath = Debug.assertDefined(getResolvedProjectReferenceToRedirectPath(file.originalFileName));
+                return getProjectReferenceOriginalInfoFrom(referencedProjectPath, file.originalFileName);
+            }
+
+            return forEachResolvedProjectReference((referencedProject, referencedProjectPath) => {
+                if (!referencedProject) return undefined;
+                const out = referencedProject.commandLine.options.outFile || referencedProject.commandLine.options.out;
+                if (out) {
+                    const outputDts = changeExtension(out, Extension.Dts);
+                    return comparePaths(outputDts, file.fileName, currentDirectory, !host.useCaseSensitiveFileNames()) === Comparison.EqualTo ?
+                        getProjectReferenceOriginalInfoFrom(referencedProjectPath) :
+                        undefined;
+                }
+
+                return forEach(referencedProject.commandLine.fileNames, fileName => {
+                    const outputDts = getOutputDeclarationFileName(fileName, referencedProject.commandLine, !host.useCaseSensitiveFileNames());
+                    return comparePaths(outputDts, file.fileName, currentDirectory, !host.useCaseSensitiveFileNames()) === Comparison.EqualTo ?
+                        getProjectReferenceOriginalInfoFrom(referencedProjectPath, fileName) :
+                        undefined;
+                });
+            });
+        }
+
+        function getProjectReferenceOriginalInfoFrom(referencedProjectPath: Path, source?: string): ProjectReferenceOriginInfo | undefined {
+            return {
+                config: getSourceFileByPath(referencedProjectPath)!.fileName,
+                source
+            };
+        }
+
         function getProjectReferenceRedirect(fileName: string): string | undefined {
             const referencedProject = getProjectReferenceRedirectProject(fileName);
             return referencedProject && getProjectReferenceOutputName(referencedProject, fileName);
@@ -2397,7 +2432,7 @@ namespace ts {
         /**
          * Get the referenced project if the file is input file from that reference project
          */
-        function getResolvedProjectReferenceToRedirect(fileName: string) {
+        function getResolvedProjectReferenceToRedirectPath(fileName: string) {
             if (mapFromFileToProjectReferenceRedirects === undefined) {
                 mapFromFileToProjectReferenceRedirects = createMap();
                 forEachResolvedProjectReference((referencedProject, referenceProjectPath) => {
@@ -2410,7 +2445,11 @@ namespace ts {
                 });
             }
 
-            const referencedProjectPath = mapFromFileToProjectReferenceRedirects.get(toPath(fileName));
+            return mapFromFileToProjectReferenceRedirects.get(toPath(fileName));
+        }
+
+        function getResolvedProjectReferenceToRedirect(fileName: string) {
+            const referencedProjectPath = getResolvedProjectReferenceToRedirectPath(fileName);
             return referencedProjectPath && getResolvedProjectReferenceByPath(referencedProjectPath);
         }
 

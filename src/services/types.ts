@@ -360,6 +360,8 @@ namespace ts {
 
         /* @internal */ getNonBoundSourceFile(fileName: string): SourceFile;
 
+        /* @internal */ getOriginDocumentSpan(originInfo: OriginInfo): DocumentSpan | undefined;
+
         dispose(): void;
     }
 
@@ -603,9 +605,24 @@ namespace ts {
         caretOffset: number;
     }
 
+    /* @internal */
+    export interface OriginInfoDeclaration {
+        kind: SyntaxKind;
+        symbolKind: ScriptElementKind;
+        name: __String;
+    }
+
+    /* @internal */
+    export interface OriginInfo {
+        origin: ProjectReferenceOriginInfo;
+        declarations: ReadonlyArray<OriginInfoDeclaration>;
+    }
+
     export interface DocumentSpan {
         textSpan: TextSpan;
         fileName: string;
+        /* @internal */
+        originInfo?: OriginInfo;
 
         /**
          * If the span represents a location that was remapped (e.g. via a .d.ts.map file),

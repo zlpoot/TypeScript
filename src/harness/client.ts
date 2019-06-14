@@ -297,6 +297,10 @@ namespace ts.server {
             };
         }
 
+        getOriginDocumentSpan() {
+            return notImplemented();
+        }
+
         getTypeDefinitionAtPosition(fileName: string, position: number): DefinitionInfo[] {
             const args: protocol.FileLocationRequestArgs = this.createFileLocationRequestArgs(fileName, position);
 

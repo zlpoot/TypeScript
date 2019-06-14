@@ -383,6 +383,8 @@ namespace ts {
             },
 
             getLocalTypeParametersOfClassOrInterfaceOrTypeAlias,
+            getProjectReferenceOriginalInfo: file => host.getProjectReferenceOriginalInfo(file),
+            getGlobalSymbol
         };
 
         function getResolvedSignatureWorker(nodeIn: CallLikeExpression, candidatesOutArray: Signature[] | undefined, argumentCount: number | undefined, checkMode: CheckMode): Signature | undefined {
