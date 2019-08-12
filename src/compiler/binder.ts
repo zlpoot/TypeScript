@@ -227,7 +227,7 @@ namespace ts {
             symbol.flags |= symbolFlags;
 
             node.symbol = symbol;
-            symbol.declarations = append(symbol.declarations, node);
+            symbol.declarations = appendIfUnique(symbol.declarations, node);
 
             if (symbolFlags & (SymbolFlags.Class | SymbolFlags.Enum | SymbolFlags.Module | SymbolFlags.Variable) && !symbol.exports) {
                 symbol.exports = createSymbolTable();
@@ -2505,9 +2505,13 @@ namespace ts {
                     }
 
                     if (constructorSymbol) {
+                        // TODO: Modify thisContainer's flags here via addDeclarationToSymbol
+                        // (also for prototype assignments and Object.defineProperty assignments (I think))
+                        // (also for functions annotated with `@constructor`, not sure if the binder correctly visits jsdoc yet)
                         // Declare a 'member' if the container is an ES5 class or ES6 constructor
                         constructorSymbol.members = constructorSymbol.members || createSymbolTable();
                         // It's acceptable for multiple 'this' assignments of the same identifier to occur
+                        addDeclarationToSymbol(constructorSymbol, thisContainer as FunctionDeclaration | FunctionExpression, SymbolFlags.Class);
                         declareSymbol(constructorSymbol.members, constructorSymbol, node, SymbolFlags.Property, SymbolFlags.PropertyExcludes & ~SymbolFlags.Property);
                     }
                     break;

@@ -2046,7 +2046,15 @@ namespace ts {
                 result.declarations,
                 d => isBlockOrCatchScoped(d) || isClassLike(d) || (d.kind === SyntaxKind.EnumDeclaration));
 
-            if (declaration === undefined) return Debug.fail("Declaration to checkResolvedBlockScopedVariable is undefined");
+            if (declaration === undefined) {
+                if (result.declarations.some(isJSConstructor)) {
+                    // constructor functions aren't actually block-scoped!
+                    return;
+                }
+                else {
+                    return Debug.fail("checkResolvedBlockScopedVariable could not find block-scoped declaration");
+                }
+            }
 
             if (!(declaration.flags & NodeFlags.Ambient) && !isBlockScopedNameDeclaredBeforeUse(declaration, errorLocation)) {
                 let diagnosticMessage;
@@ -6210,6 +6218,8 @@ namespace ts {
                 if (node.kind === SyntaxKind.InterfaceDeclaration ||
                     node.kind === SyntaxKind.ClassDeclaration ||
                     node.kind === SyntaxKind.ClassExpression ||
+                    node.kind === SyntaxKind.FunctionDeclaration ||
+                    node.kind === SyntaxKind.FunctionExpression ||
                     isTypeAlias(node)) {
                     const declaration = <InterfaceDeclaration | TypeAliasDeclaration | JSDocTypedefTag | JSDocCallbackTag>node;
                     result = appendTypeParameters(result, getEffectiveTypeParameterDeclarations(declaration));
@@ -6776,7 +6786,7 @@ namespace ts {
             }
         }
 
-        function resolveDeclaredMembers(type: InterfaceType): InterfaceTypeWithTypeSideMembers {
+        function resolveTypeSideMembers(type: InterfaceType): InterfaceTypeWithTypeSideMembers {
             if (!(<InterfaceTypeWithTypeSideMembers>type).typeSideProperties) {
                 const symbol = type.symbol;
                 const members = getMembersOfSymbol(symbol);
@@ -7077,11 +7087,11 @@ namespace ts {
         }
 
         function resolveClassOrInterfaceMembers(type: InterfaceType): void {
-            resolveObjectTypeMembers(type, resolveDeclaredMembers(type), emptyArray, emptyArray);
+            resolveObjectTypeMembers(type, resolveTypeSideMembers(type), emptyArray, emptyArray);
         }
 
         function resolveTypeReferenceMembers(type: TypeReference): void {
-            const source = resolveDeclaredMembers(type.target);
+            const source = resolveTypeSideMembers(type.target);
             const typeParameters = concatenate(source.typeParameters!, [source.thisType!]);
             const typeArguments = type.typeArguments && type.typeArguments.length === typeParameters.length ?
                 type.typeArguments : concatenate(type.typeArguments, [type]);
@@ -7486,8 +7496,8 @@ namespace ts {
                 }
                 setStructuredTypeMembers(type, members, emptyArray, emptyArray, undefined, undefined);
                 if (symbol.flags & SymbolFlags.Class) {
-                    const classType = getTypeOfClassOrInterfaceTypeSide(symbol);
-                    const baseConstructorType = getBaseConstructorTypeOfClass(classType);
+                    const instanceType = getTypeOfClassOrInterfaceTypeSide(symbol);
+                    const baseConstructorType = getBaseConstructorTypeOfClass(instanceType);
                     if (baseConstructorType.flags & (TypeFlags.Object | TypeFlags.Intersection | TypeFlags.TypeVariable)) {
                         members = createSymbolTable(getNamedMembers(members));
                         addInheritedMembers(members, getPropertiesOfType(baseConstructorType));
@@ -7505,31 +7515,26 @@ namespace ts {
                 // will never be observed because a qualified name can't reference signatures.
                 if (symbol.flags & (SymbolFlags.Function | SymbolFlags.Method)) {
                     type.callSignatures = getSignaturesOfSymbol(symbol);
-                    // TODO: When ctor funcs are real classes, call signatures should return what the actual return is,
-                    // and constructor sigs should return the instance type, so this will add a map(s => clone(s).returnType = getDeclaredTypeOfClassOrInterface(symbol))
-                    // for a prototype, we can just have the call signatures be incorrect and have getSignaturesOfSymbol default to getDeclaredTypeOfClassOrInterface
-                    // (presently call sigs do the wrong thing too, so not urgent to fix)
-                    if (type.callSignatures.some(sig => isJSConstructor(sig.declaration))) {
-                        // Note: getSignaturesOfSymbol just calls getSignatureFromDeclaration, so really we want to
-                        // create a new field on signatures called resolvedConstructorFunctionType or something
-                        // (then resolve it when I remember where that is)
-                        // type.constructSignatures = getConstructorFunctionSignaturesOfSymbol(symbol);
-                        // resolveDeclaredMembers
-                        type.constructSignatures = filter(type.callSignatures, sig => isJSConstructor(sig.declaration));
-                    }
-                    else {
-                        // TODO: Put this back to what it was before ctor funcs came along
-                        type.constructSignatures = emptyArray;
-                    }
                 }
                 // And likewise for construct signatures for classes
                 if (symbol.flags & SymbolFlags.Class) {
-                    const classType = getTypeOfClassOrInterfaceTypeSide(symbol);
-                    let constructSignatures = getSignaturesOfSymbol(symbol.members!.get(InternalSymbolName.Constructor));
-                    if (!constructSignatures.length) {
-                        constructSignatures = getDefaultConstructSignatures(classType);
+                    const instanceType = getTypeOfClassOrInterfaceTypeSide(symbol);
+                    if (symbol.flags & SymbolFlags.Function) {
+                        // TODO: When ctor funcs are real classes, call signatures should return what the actual return is,
+                        // (so, use the normal code path in resolveReturnTypeOfSignature?)
+                        // and constructor sigs should return instanceType,
+                        // (might need a special property added for this in getSignatureFromDeclaration?)
+                        // for a prototype, we can just have the call signatures be incorrect
+                        // (presently call sigs do the wrong thing too, so not urgent to fix)
+                        type.constructSignatures = filter(type.callSignatures, sig => isJSConstructor(sig.declaration));
                     }
-                    type.constructSignatures = constructSignatures;
+                    else {
+                        let constructSignatures = getSignaturesOfSymbol(symbol.members!.get(InternalSymbolName.Constructor));
+                        if (!constructSignatures.length) {
+                            constructSignatures = getDefaultConstructSignatures(instanceType);
+                        }
+                        type.constructSignatures = constructSignatures;
+                    }
                 }
             }
         }
@@ -29459,7 +29464,7 @@ namespace ts {
 
             interface InheritanceInfoMap { prop: Symbol; containingType: Type; }
             const seen = createUnderscoreEscapedMap<InheritanceInfoMap>();
-            forEach(resolveDeclaredMembers(type).typeSideProperties, p => { seen.set(p.escapedName, { prop: p, containingType: type }); });
+            forEach(resolveTypeSideMembers(type).typeSideProperties, p => { seen.set(p.escapedName, { prop: p, containingType: type }); });
             let ok = true;
 
             for (const base of baseTypes) {

@@ -2572,6 +2572,7 @@ namespace ts {
     }
 
     export function getEffectiveBaseTypeNode(node: ClassLikeDeclaration | InterfaceDeclaration) {
+        // TODO: Needs to understand ctor funcs
         const baseType = getClassExtendsHeritageElement(node);
         if (baseType && isInJSFile(node)) {
             // Prefer an @augments tag because it may have type parameters.
