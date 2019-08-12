@@ -364,7 +364,7 @@ namespace ts {
                 if (parameter === undefined) return Debug.fail("Cannot get symbols of a synthetic parameter that cannot be resolved to a parse-tree node.");
                 return getSymbolsOfParameterPropertyDeclaration(parameter, escapeLeadingUnderscores(parameterName));
             },
-            getDeclaredTypeOfSymbol,
+            getTypeOfSymbolTypeSide,
             getPropertiesOfType,
             getPropertyOfType: (type, name) => getPropertyOfType(type, escapeLeadingUnderscores(name)),
             getTypeOfPropertyOfType: (type, name) => getTypeOfPropertyOfType(type, escapeLeadingUnderscores(name)),
@@ -503,7 +503,7 @@ namespace ts {
                 getReturnTypeOfSignature,
                 getBaseTypes,
                 resolveStructuredTypeMembers,
-                getTypeOfSymbol,
+                getTypeOfSymbolValueSide,
                 getResolvedSymbol,
                 getIndexTypeOfStructuredType,
                 getConstraintOfTypeParameter,
@@ -1901,7 +1901,7 @@ namespace ts {
                     }
 
                     // Check to see if a static member exists.
-                    const constructorType = getTypeOfSymbol(classSymbol);
+                    const constructorType = getTypeOfSymbolValueSide(classSymbol);
                     if (getPropertyOfType(constructorType, name)) {
                         error(errorLocation, Diagnostics.Cannot_find_name_0_Did_you_mean_the_static_member_1_0, diagnosticName(nameArg), symbolToString(classSymbol));
                         return true;
@@ -1910,7 +1910,7 @@ namespace ts {
                     // No static member is present.
                     // Check if we're in an instance method and look for a relevant instance member.
                     if (location === container && !hasModifier(location, ModifierFlags.Static)) {
-                        const instanceType = (<InterfaceType>getDeclaredTypeOfSymbol(classSymbol)).thisType!; // TODO: GH#18217
+                        const instanceType = (<InterfaceType>getTypeOfSymbolTypeSide(classSymbol)).thisType!; // TODO: GH#18217
                         if (getPropertyOfType(instanceType, name)) {
                             error(errorLocation, Diagnostics.Cannot_find_name_0_Did_you_mean_the_instance_member_this_0, diagnosticName(nameArg));
                             return true;
@@ -1960,7 +1960,7 @@ namespace ts {
                     if (isQualifiedName(parent)) {
                         Debug.assert(parent.left === errorLocation, "Should only be resolving left side of qualified name as a namespace");
                         const propName = parent.right.escapedText;
-                        const propType = getPropertyOfType(getDeclaredTypeOfSymbol(symbol), propName);
+                        const propType = getPropertyOfType(getTypeOfSymbolTypeSide(symbol), propName);
                         if (propType) {
                             error(
                                 parent,
@@ -2112,7 +2112,7 @@ namespace ts {
         function resolveExportByName(moduleSymbol: Symbol, name: __String, dontResolveAlias: boolean) {
             const exportValue = moduleSymbol.exports!.get(InternalSymbolName.ExportEquals);
             return exportValue
-                ? getPropertyOfType(getTypeOfSymbol(exportValue), name)
+                ? getPropertyOfType(getTypeOfSymbolValueSide(exportValue), name)
                 : resolveSymbol(moduleSymbol.exports!.get(name), dontResolveAlias);
         }
 
@@ -2257,7 +2257,7 @@ namespace ts {
                     let symbolFromVariable: Symbol | undefined;
                     // First check if module was specified with "export=". If so, get the member from the resolved type
                     if (moduleSymbol && moduleSymbol.exports && moduleSymbol.exports.get(InternalSymbolName.ExportEquals)) {
-                        symbolFromVariable = getPropertyOfType(getTypeOfSymbol(targetSymbol), name.escapedText);
+                        symbolFromVariable = getPropertyOfType(getTypeOfSymbolValueSide(targetSymbol), name.escapedText);
                     }
                     else {
                         symbolFromVariable = getPropertyOfVariable(targetSymbol, name.escapedText);
@@ -2734,7 +2734,7 @@ namespace ts {
                         (isImportDeclaration(referenceParent) && getNamespaceDeclarationNode(referenceParent)) ||
                         isImportCall(referenceParent)
                     ) {
-                        const type = getTypeOfSymbol(symbol);
+                        const type = getTypeOfSymbolValueSide(symbol);
                         let sigs = getSignaturesOfStructuredType(type, SignatureKind.Call);
                         if (!sigs || !sigs.length) {
                             sigs = getSignaturesOfStructuredType(type, SignatureKind.Construct);
@@ -2773,7 +2773,7 @@ namespace ts {
             const exports = getExportsOfModuleAsArray(moduleSymbol);
             const exportEquals = resolveExternalModuleSymbol(moduleSymbol);
             if (exportEquals !== moduleSymbol) {
-                addRange(exports, getPropertiesOfType(getTypeOfSymbol(exportEquals)));
+                addRange(exports, getPropertiesOfType(getTypeOfSymbolValueSide(exportEquals)));
             }
             return exports;
         }
@@ -2796,7 +2796,7 @@ namespace ts {
                 return undefined;
             }
 
-            const type = getTypeOfSymbol(exportEquals);
+            const type = getTypeOfSymbolValueSide(exportEquals);
             return type.flags & TypeFlags.Primitive ? undefined : getPropertyOfType(type, memberName);
         }
 
@@ -3626,7 +3626,7 @@ namespace ts {
                 if (type.flags & TypeFlags.EnumLiteral && !(type.flags & TypeFlags.Union)) {
                     const parentSymbol = getParentOfSymbol(type.symbol)!;
                     const parentName = symbolToTypeNode(parentSymbol, context, SymbolFlags.Type);
-                    const enumLiteralName = getDeclaredTypeOfSymbol(parentSymbol) === type
+                    const enumLiteralName = getTypeOfSymbolTypeSide(parentSymbol) === type
                         ? parentName
                         : appendReferenceToType(
                             parentName as TypeReferenceNode | ImportTypeNode,
@@ -4092,7 +4092,7 @@ namespace ts {
             function addPropertyToElementList(propertySymbol: Symbol, context: NodeBuilderContext, typeElements: TypeElement[]) {
                 const propertyIsReverseMapped = !!(getCheckFlags(propertySymbol) & CheckFlags.ReverseMapped);
                 const propertyType = propertyIsReverseMapped && context.flags & NodeBuilderFlags.InReverseMappedType ?
-                    anyType : getTypeOfSymbol(propertySymbol);
+                    anyType : getTypeOfSymbolValueSide(propertySymbol);
                 const saveEnclosingDeclaration = context.enclosingDeclaration;
                 context.enclosingDeclaration = undefined;
                 if (context.tracker.trackSymbol && getCheckFlags(propertySymbol) & CheckFlags.Late) {
@@ -4271,7 +4271,7 @@ namespace ts {
                     parameterDeclaration = getDeclarationOfKind<JSDocParameterTag>(parameterSymbol, SyntaxKind.JSDocParameterTag);
                 }
 
-                let parameterType = getTypeOfSymbol(parameterSymbol);
+                let parameterType = getTypeOfSymbolValueSide(parameterSymbol);
                 if (parameterDeclaration && isRequiredInitializedParameter(parameterDeclaration)) {
                     parameterType = getOptionalType(parameterType);
                 }
@@ -5040,7 +5040,7 @@ namespace ts {
                 case TypeSystemPropertyName.EnumTagType:
                     return !!(getNodeLinks(target as JSDocEnumTag).resolvedEnumType);
                 case TypeSystemPropertyName.DeclaredType:
-                    return !!getSymbolLinks(<Symbol>target).declaredType;
+                    return !!getSymbolLinks(<Symbol>target).typeType;
                 case TypeSystemPropertyName.ResolvedBaseConstructorType:
                     return !!(<InterfaceType>target).resolvedBaseConstructorType;
                 case TypeSystemPropertyName.ResolvedReturnType:
@@ -5084,14 +5084,14 @@ namespace ts {
             // Every class automatically contains a static property member named 'prototype',
             // the type of which is an instantiation of the class type with type Any supplied as a type argument for each type parameter.
             // It is an error to explicitly declare a static property member with the name 'prototype'.
-            const classType = <InterfaceType>getDeclaredTypeOfSymbol(getParentOfSymbol(prototype)!);
+            const classType = <InterfaceType>getTypeOfSymbolTypeSide(getParentOfSymbol(prototype)!);
             return classType.typeParameters ? createTypeReference(<GenericType>classType, map(classType.typeParameters, _ => anyType)) : classType;
         }
 
         // Return the type of the given property in the given type, or undefined if no such property exists
         function getTypeOfPropertyOfType(type: Type, name: __String): Type | undefined {
             const prop = getPropertyOfType(type, name);
-            return prop ? getTypeOfSymbol(prop) : undefined;
+            return prop ? getTypeOfSymbolValueSide(prop) : undefined;
         }
 
         function getTypeOfPropertyOrIndexSignature(type: Type, name: __String): Type {
@@ -5369,7 +5369,7 @@ namespace ts {
                         if (thisParameter && declaration === thisParameter) {
                             // Use the type from the *getter*
                             Debug.assert(!thisParameter.type);
-                            return getTypeOfSymbol(getterSignature.thisParameter!);
+                            return getTypeOfSymbolValueSide(getterSignature.thisParameter!);
                         }
                         return getReturnTypeOfSignature(getterSignature);
                     }
@@ -5523,7 +5523,7 @@ namespace ts {
         function getInitializerTypeFromAssignmentDeclaration(symbol: Symbol, resolvedSymbol: Symbol | undefined, expression: BinaryExpression | CallExpression, kind: AssignmentDeclarationKind) {
             if (isCallExpression(expression)) {
                 if (resolvedSymbol) {
-                    return getTypeOfSymbol(resolvedSymbol); // This shouldn't happen except under some hopefully forbidden merges of export assignments and object define assignments
+                    return getTypeOfSymbolValueSide(resolvedSymbol); // This shouldn't happen except under some hopefully forbidden merges of export assignments and object define assignments
                 }
                 const objectLitType = checkExpressionCached((expression as BindableObjectDefinePropertyCall).arguments[2]);
                 const valueType = getTypeOfPropertyOfType(objectLitType, "value" as __String);
@@ -5546,7 +5546,7 @@ namespace ts {
                 }
                 return anyType;
             }
-            const type = resolvedSymbol ? getTypeOfSymbol(resolvedSymbol) : getWidenedLiteralType(checkExpressionCached(expression.right));
+            const type = resolvedSymbol ? getTypeOfSymbolValueSide(resolvedSymbol) : getWidenedLiteralType(checkExpressionCached(expression.right));
             if (type.flags & TypeFlags.Object &&
                 kind === AssignmentDeclarationKind.ModuleExports &&
                 symbol.escapedName === InternalSymbolName.ExportEquals) {
@@ -5560,7 +5560,7 @@ namespace ts {
                     if (members.has(name)) {
                         const exportedMember = exportedType.members.get(name)!;
                         const union = createSymbol(s.flags | exportedMember.flags, name);
-                        union.type = getUnionType([getTypeOfSymbol(s), getTypeOfSymbol(exportedMember)]);
+                        union.type = getUnionType([getTypeOfSymbolValueSide(s), getTypeOfSymbolValueSide(exportedMember)]);
                         members.set(name, union);
                     }
                     else {
@@ -5610,7 +5610,7 @@ namespace ts {
                 return isClassLike(parent) && parent;
             });
             if (parentDeclaration) {
-                const classType = getDeclaredTypeOfSymbol(getSymbolOfNode(parentDeclaration)) as InterfaceType;
+                const classType = getTypeOfSymbolTypeSide(getSymbolOfNode(parentDeclaration)) as InterfaceType;
                 const baseClassType = classType && getBaseTypes(classType)[0];
                 if (baseClassType) {
                     return getTypeOfPropertyOfType(baseClassType, property.escapedName);
@@ -5853,7 +5853,7 @@ namespace ts {
                 type = getTypeOfFuncClassEnumModule(symbol);
             }
             else if (isEnumMember(declaration)) {
-                type = getTypeOfEnumMember(symbol);
+                type = getTypeOfEnumMemberValueSide(symbol);
             }
             else {
                 return Debug.fail("Unhandled declaration kind! " + Debug.formatSyntaxKind(declaration.kind) + " for " + Debug.formatSymbol(symbol));
@@ -5959,7 +5959,7 @@ namespace ts {
         }
 
         function getBaseTypeVariableOfClass(symbol: Symbol) {
-            const baseConstructorType = getBaseConstructorTypeOfClass(getDeclaredTypeOfClassOrInterface(symbol));
+            const baseConstructorType = getBaseConstructorTypeOfClass(getTypeOfClassOrInterfaceTypeSide(symbol));
             return baseConstructorType.flags & TypeFlags.TypeVariable ? baseConstructorType : undefined;
         }
 
@@ -6022,12 +6022,12 @@ namespace ts {
             }
         }
 
-        function getTypeOfEnumMember(symbol: Symbol): Type {
+        function getTypeOfEnumMemberValueSide(symbol: Symbol): Type {
             const links = getSymbolLinks(symbol);
-            return links.type || (links.type = getDeclaredTypeOfEnumMember(symbol));
+            return links.type || (links.type = getTypeOfEnumMemberTypeSide(symbol));
         }
 
-        function getTypeOfAlias(symbol: Symbol): Type {
+        function getTypeOfAliasValueSide(symbol: Symbol): Type {
             const links = getSymbolLinks(symbol);
             if (!links.type) {
                 const targetSymbol = resolveAlias(symbol);
@@ -6038,7 +6038,7 @@ namespace ts {
                 // This check is important because without it, a call to getTypeOfSymbol could end
                 // up recursively calling getTypeOfAlias, causing a stack overflow.
                 links.type = targetSymbol.flags & SymbolFlags.Value
-                    ? getTypeOfSymbol(targetSymbol)
+                    ? getTypeOfSymbolValueSide(targetSymbol)
                     : errorType;
             }
             return links.type;
@@ -6050,7 +6050,7 @@ namespace ts {
                 if (!pushTypeResolution(symbol, TypeSystemPropertyName.Type)) {
                     return links.type = errorType;
                 }
-                let type = instantiateType(getTypeOfSymbol(links.target!), links.mapper!);
+                let type = instantiateType(getTypeOfSymbolValueSide(links.target!), links.mapper!);
                 if (!popTypeResolution()) {
                     type = reportCircularityError(symbol);
                 }
@@ -6088,7 +6088,7 @@ namespace ts {
             return links.type;
         }
 
-        function getTypeOfSymbol(symbol: Symbol): Type {
+        function getTypeOfSymbolValueSide(symbol: Symbol): Type {
             if (getCheckFlags(symbol) & CheckFlags.DeferredType) {
                 return getTypeOfSymbolWithDeferredType(symbol);
             }
@@ -6105,13 +6105,13 @@ namespace ts {
                 return getTypeOfFuncClassEnumModule(symbol);
             }
             if (symbol.flags & SymbolFlags.EnumMember) {
-                return getTypeOfEnumMember(symbol);
+                return getTypeOfEnumMemberValueSide(symbol);
             }
             if (symbol.flags & SymbolFlags.Accessor) {
                 return getTypeOfAccessors(symbol);
             }
             if (symbol.flags & SymbolFlags.Alias) {
-                return getTypeOfAlias(symbol);
+                return getTypeOfAliasValueSide(symbol);
             }
             return errorType;
         }
@@ -6147,7 +6147,7 @@ namespace ts {
         // in-place and returns the same array.
         function appendTypeParameters(typeParameters: TypeParameter[] | undefined, declarations: ReadonlyArray<TypeParameterDeclaration>): TypeParameter[] | undefined {
             for (const declaration of declarations) {
-                typeParameters = appendIfUnique(typeParameters, getDeclaredTypeOfTypeParameter(getSymbolOfNode(declaration)));
+                typeParameters = appendIfUnique(typeParameters, getTypeOfTypeParameter(getSymbolOfNode(declaration)));
             }
             return typeParameters;
         }
@@ -6182,7 +6182,7 @@ namespace ts {
                     case SyntaxKind.ConditionalType:
                         const outerTypeParameters = getOuterTypeParameters(node, includeThisTypes);
                         if (node.kind === SyntaxKind.MappedType) {
-                            return append(outerTypeParameters, getDeclaredTypeOfTypeParameter(getSymbolOfNode((<MappedTypeNode>node).typeParameter)));
+                            return append(outerTypeParameters, getTypeOfTypeParameter(getSymbolOfNode((<MappedTypeNode>node).typeParameter)));
                         }
                         else if (node.kind === SyntaxKind.ConditionalType) {
                             return concatenate(outerTypeParameters, getInferTypeParameters(<ConditionalTypeNode>node));
@@ -6190,7 +6190,7 @@ namespace ts {
                         const outerAndOwnTypeParameters = appendTypeParameters(outerTypeParameters, getEffectiveTypeParameterDeclarations(<DeclarationWithTypeParameters>node));
                         const thisType = includeThisTypes &&
                             (node.kind === SyntaxKind.ClassDeclaration || node.kind === SyntaxKind.ClassExpression || node.kind === SyntaxKind.InterfaceDeclaration) &&
-                            getDeclaredTypeOfClassOrInterface(getSymbolOfNode(node as ClassLikeDeclaration | InterfaceDeclaration)).thisType;
+                            getTypeOfClassOrInterfaceTypeSide(getSymbolOfNode(node as ClassLikeDeclaration | InterfaceDeclaration)).thisType;
                         return thisType ? append(outerAndOwnTypeParameters, thisType) : outerAndOwnTypeParameters;
                 }
             }
@@ -6346,7 +6346,7 @@ namespace ts {
             const typeArgs = typeArgumentsFromTypeReferenceNode(baseTypeNode);
             let baseType: Type;
             const originalBaseType = isJSConstructorType(baseConstructorType) ? baseConstructorType :
-                baseConstructorType.symbol ? getDeclaredTypeOfSymbol(baseConstructorType.symbol) :
+                baseConstructorType.symbol ? getTypeOfSymbolTypeSide(baseConstructorType.symbol) :
                 undefined;
             if (baseConstructorType.symbol && baseConstructorType.symbol.flags & SymbolFlags.Class &&
                 areAllOuterTypeParametersApplied(originalBaseType!)) {
@@ -6461,7 +6461,7 @@ namespace ts {
                         for (const node of baseTypeNodes) {
                             if (isEntityNameExpression(node.expression)) {
                                 const baseSymbol = resolveEntityName(node.expression, SymbolFlags.Type, /*ignoreErrors*/ true);
-                                if (!baseSymbol || !(baseSymbol.flags & SymbolFlags.Interface) || getDeclaredTypeOfClassOrInterface(baseSymbol).thisType) {
+                                if (!baseSymbol || !(baseSymbol.flags & SymbolFlags.Interface) || getTypeOfClassOrInterfaceTypeSide(baseSymbol).thisType) {
                                     return false;
                                 }
                             }
@@ -6472,11 +6472,13 @@ namespace ts {
             return true;
         }
 
-        function getDeclaredTypeOfClassOrInterface(symbol: Symbol): InterfaceType {
+        function getTypeOfClassOrInterfaceTypeSide(symbol: Symbol): InterfaceType {
             const links = getSymbolLinks(symbol);
-            if (!links.declaredType) {
+            if (!links.typeType) {
+                // TODO: the binder will have to start marking constructor functions with Class, or I'll have to propogate
+                // a whole bunch of isJsConstructor calls through the checker
                 const kind = symbol.flags & SymbolFlags.Class ? ObjectFlags.Class : ObjectFlags.Interface;
-                const type = links.declaredType = <InterfaceType>createObjectType(kind, symbol);
+                const type = links.typeType = <InterfaceType>createObjectType(kind, symbol);
                 const outerTypeParameters = getOuterTypeParametersOfClassOrInterface(symbol);
                 const localTypeParameters = getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol);
                 // A class or interface is generic if it has type parameters or a "this" type. We always give classes a "this" type
@@ -6498,12 +6500,12 @@ namespace ts {
                     type.thisType.constraint = type;
                 }
             }
-            return <InterfaceType>links.declaredType;
+            return <InterfaceType>links.typeType;
         }
 
-        function getDeclaredTypeOfTypeAlias(symbol: Symbol): Type {
+        function getTypeOfTypeAlias(symbol: Symbol): Type {
             const links = getSymbolLinks(symbol);
-            if (!links.declaredType) {
+            if (!links.typeType) {
                 // Note that we use the links object as the target here because the symbol object is used as the unique
                 // identity for resolution of the 'type' property in SymbolLinks.
                 if (!pushTypeResolution(symbol, TypeSystemPropertyName.DeclaredType)) {
@@ -6532,9 +6534,9 @@ namespace ts {
                     type = errorType;
                     error(isJSDocEnumTag(declaration) ? declaration : declaration.name || declaration, Diagnostics.Type_alias_0_circularly_references_itself, symbolToString(symbol));
                 }
-                links.declaredType = type;
+                links.typeType = type;
             }
-            return links.declaredType;
+            return links.typeType;
         }
 
         function isStringConcatExpression(expr: Node): boolean {
@@ -6590,13 +6592,13 @@ namespace ts {
         }
 
         function getBaseTypeOfEnumLiteralType(type: Type) {
-            return type.flags & TypeFlags.EnumLiteral && !(type.flags & TypeFlags.Union) ? getDeclaredTypeOfSymbol(getParentOfSymbol(type.symbol)!) : type;
+            return type.flags & TypeFlags.EnumLiteral && !(type.flags & TypeFlags.Union) ? getTypeOfSymbolTypeSide(getParentOfSymbol(type.symbol)!) : type;
         }
 
-        function getDeclaredTypeOfEnum(symbol: Symbol): Type {
+        function getTypeOfEnum(symbol: Symbol): Type {
             const links = getSymbolLinks(symbol);
-            if (links.declaredType) {
-                return links.declaredType;
+            if (links.typeType) {
+                return links.typeType;
             }
             if (getEnumKind(symbol) === EnumKind.Literal) {
                 enumCount++;
@@ -6606,7 +6608,7 @@ namespace ts {
                         for (const member of (<EnumDeclaration>declaration).members) {
                             const value = getEnumMemberValue(member);
                             const memberType = getFreshTypeOfLiteralType(getLiteralType(value !== undefined ? value : 0, enumCount, getSymbolOfNode(member)));
-                            getSymbolLinks(getSymbolOfNode(member)).declaredType = memberType;
+                            getSymbolLinks(getSymbolOfNode(member)).typeType = memberType;
                             memberTypeList.push(getRegularTypeOfLiteralType(memberType));
                         }
                     }
@@ -6617,57 +6619,57 @@ namespace ts {
                         enumType.flags |= TypeFlags.EnumLiteral;
                         enumType.symbol = symbol;
                     }
-                    return links.declaredType = enumType;
+                    return links.typeType = enumType;
                 }
             }
             const enumType = createType(TypeFlags.Enum);
             enumType.symbol = symbol;
-            return links.declaredType = enumType;
+            return links.typeType = enumType;
         }
 
-        function getDeclaredTypeOfEnumMember(symbol: Symbol): Type {
+        function getTypeOfEnumMemberTypeSide(symbol: Symbol): Type {
             const links = getSymbolLinks(symbol);
-            if (!links.declaredType) {
-                const enumType = getDeclaredTypeOfEnum(getParentOfSymbol(symbol)!);
-                if (!links.declaredType) {
-                    links.declaredType = enumType;
+            if (!links.typeType) {
+                const enumType = getTypeOfEnum(getParentOfSymbol(symbol)!);
+                if (!links.typeType) {
+                    links.typeType = enumType;
                 }
             }
-            return links.declaredType;
+            return links.typeType;
         }
 
-        function getDeclaredTypeOfTypeParameter(symbol: Symbol): TypeParameter {
+        function getTypeOfTypeParameter(symbol: Symbol): TypeParameter {
             const links = getSymbolLinks(symbol);
-            return links.declaredType || (links.declaredType = createTypeParameter(symbol));
+            return links.typeType || (links.typeType = createTypeParameter(symbol));
         }
 
-        function getDeclaredTypeOfAlias(symbol: Symbol): Type {
+        function getTypeOfAliasTypeSide(symbol: Symbol): Type {
             const links = getSymbolLinks(symbol);
-            return links.declaredType || (links.declaredType = getDeclaredTypeOfSymbol(resolveAlias(symbol)));
+            return links.typeType || (links.typeType = getTypeOfSymbolTypeSide(resolveAlias(symbol)));
         }
 
-        function getDeclaredTypeOfSymbol(symbol: Symbol): Type {
-            return tryGetDeclaredTypeOfSymbol(symbol) || errorType;
+        function getTypeOfSymbolTypeSide(symbol: Symbol): Type {
+            return tryGetTypeOfSymbolTypeSide(symbol) || errorType;
         }
 
-        function tryGetDeclaredTypeOfSymbol(symbol: Symbol): Type | undefined {
+        function tryGetTypeOfSymbolTypeSide(symbol: Symbol): Type | undefined {
             if (symbol.flags & (SymbolFlags.Class | SymbolFlags.Interface)) {
-                return getDeclaredTypeOfClassOrInterface(symbol);
+                return getTypeOfClassOrInterfaceTypeSide(symbol);
             }
             if (symbol.flags & SymbolFlags.TypeAlias) {
-                return getDeclaredTypeOfTypeAlias(symbol);
+                return getTypeOfTypeAlias(symbol);
             }
             if (symbol.flags & SymbolFlags.TypeParameter) {
-                return getDeclaredTypeOfTypeParameter(symbol);
+                return getTypeOfTypeParameter(symbol);
             }
             if (symbol.flags & SymbolFlags.Enum) {
-                return getDeclaredTypeOfEnum(symbol);
+                return getTypeOfEnum(symbol);
             }
             if (symbol.flags & SymbolFlags.EnumMember) {
-                return getDeclaredTypeOfEnumMember(symbol);
+                return getTypeOfEnumMemberTypeSide(symbol);
             }
             if (symbol.flags & SymbolFlags.Alias) {
-                return getDeclaredTypeOfAlias(symbol);
+                return getTypeOfAliasTypeSide(symbol);
             }
             return undefined;
         }
@@ -6774,21 +6776,21 @@ namespace ts {
             }
         }
 
-        function resolveDeclaredMembers(type: InterfaceType): InterfaceTypeWithDeclaredMembers {
-            if (!(<InterfaceTypeWithDeclaredMembers>type).declaredProperties) {
+        function resolveDeclaredMembers(type: InterfaceType): InterfaceTypeWithTypeSideMembers {
+            if (!(<InterfaceTypeWithTypeSideMembers>type).typeSideProperties) {
                 const symbol = type.symbol;
                 const members = getMembersOfSymbol(symbol);
-                (<InterfaceTypeWithDeclaredMembers>type).declaredProperties = getNamedMembers(members);
+                (<InterfaceTypeWithTypeSideMembers>type).typeSideProperties = getNamedMembers(members);
                 // Start with signatures at empty array in case of recursive types
-                (<InterfaceTypeWithDeclaredMembers>type).declaredCallSignatures = emptyArray;
-                (<InterfaceTypeWithDeclaredMembers>type).declaredConstructSignatures = emptyArray;
+                (<InterfaceTypeWithTypeSideMembers>type).typeSideCallSignatures = emptyArray;
+                (<InterfaceTypeWithTypeSideMembers>type).typeSideConstructSignatures = emptyArray;
 
-                (<InterfaceTypeWithDeclaredMembers>type).declaredCallSignatures = getSignaturesOfSymbol(members.get(InternalSymbolName.Call));
-                (<InterfaceTypeWithDeclaredMembers>type).declaredConstructSignatures = getSignaturesOfSymbol(members.get(InternalSymbolName.New));
-                (<InterfaceTypeWithDeclaredMembers>type).declaredStringIndexInfo = getIndexInfoOfSymbol(symbol, IndexKind.String);
-                (<InterfaceTypeWithDeclaredMembers>type).declaredNumberIndexInfo = getIndexInfoOfSymbol(symbol, IndexKind.Number);
+                (<InterfaceTypeWithTypeSideMembers>type).typeSideCallSignatures = getSignaturesOfSymbol(members.get(InternalSymbolName.Call));
+                (<InterfaceTypeWithTypeSideMembers>type).typeSideConstructSignatures = getSignaturesOfSymbol(members.get(InternalSymbolName.New));
+                (<InterfaceTypeWithTypeSideMembers>type).typeSideStringIndexInfo = getIndexInfoOfSymbol(symbol, IndexKind.String);
+                (<InterfaceTypeWithTypeSideMembers>type).typeSideNumberIndexInfo = getIndexInfoOfSymbol(symbol, IndexKind.Number);
             }
-            return <InterfaceTypeWithDeclaredMembers>type;
+            return <InterfaceTypeWithTypeSideMembers>type;
         }
 
         /**
@@ -7028,7 +7030,7 @@ namespace ts {
             return needApparentType ? getApparentType(type) : type;
         }
 
-        function resolveObjectTypeMembers(type: ObjectType, source: InterfaceTypeWithDeclaredMembers, typeParameters: ReadonlyArray<TypeParameter>, typeArguments: ReadonlyArray<Type>) {
+        function resolveObjectTypeMembers(type: ObjectType, source: InterfaceTypeWithTypeSideMembers, typeParameters: ReadonlyArray<TypeParameter>, typeArguments: ReadonlyArray<Type>) {
             let mapper: TypeMapper;
             let members: SymbolTable;
             let callSignatures: ReadonlyArray<Signature>;
@@ -7037,24 +7039,24 @@ namespace ts {
             let numberIndexInfo: IndexInfo | undefined;
             if (rangeEquals(typeParameters, typeArguments, 0, typeParameters.length)) {
                 mapper = identityMapper;
-                members = source.symbol ? getMembersOfSymbol(source.symbol) : createSymbolTable(source.declaredProperties);
-                callSignatures = source.declaredCallSignatures;
-                constructSignatures = source.declaredConstructSignatures;
-                stringIndexInfo = source.declaredStringIndexInfo;
-                numberIndexInfo = source.declaredNumberIndexInfo;
+                members = source.symbol ? getMembersOfSymbol(source.symbol) : createSymbolTable(source.typeSideProperties);
+                callSignatures = source.typeSideCallSignatures;
+                constructSignatures = source.typeSideConstructSignatures;
+                stringIndexInfo = source.typeSideStringIndexInfo;
+                numberIndexInfo = source.typeSideNumberIndexInfo;
             }
             else {
                 mapper = createTypeMapper(typeParameters, typeArguments);
-                members = createInstantiatedSymbolTable(source.declaredProperties, mapper, /*mappingThisOnly*/ typeParameters.length === 1);
-                callSignatures = instantiateSignatures(source.declaredCallSignatures, mapper);
-                constructSignatures = instantiateSignatures(source.declaredConstructSignatures, mapper);
-                stringIndexInfo = instantiateIndexInfo(source.declaredStringIndexInfo, mapper);
-                numberIndexInfo = instantiateIndexInfo(source.declaredNumberIndexInfo, mapper);
+                members = createInstantiatedSymbolTable(source.typeSideProperties, mapper, /*mappingThisOnly*/ typeParameters.length === 1);
+                callSignatures = instantiateSignatures(source.typeSideCallSignatures, mapper);
+                constructSignatures = instantiateSignatures(source.typeSideConstructSignatures, mapper);
+                stringIndexInfo = instantiateIndexInfo(source.typeSideStringIndexInfo, mapper);
+                numberIndexInfo = instantiateIndexInfo(source.typeSideNumberIndexInfo, mapper);
             }
             const baseTypes = getBaseTypes(source);
             if (baseTypes.length) {
                 if (source.symbol && members === getMembersOfSymbol(source.symbol)) {
-                    members = createSymbolTable(source.declaredProperties);
+                    members = createSymbolTable(source.typeSideProperties);
                 }
                 setStructuredTypeMembers(type, members, callSignatures, constructSignatures, stringIndexInfo, numberIndexInfo);
                 const thisArgument = lastOrUndefined(typeArguments);
@@ -7132,7 +7134,7 @@ namespace ts {
             if (sig.hasRestParameter) {
                 const restIndex = sig.parameters.length - 1;
                 const restParameter = sig.parameters[restIndex];
-                const restType = getTypeOfSymbol(restParameter);
+                const restType = getTypeOfSymbolValueSide(restParameter);
                 if (isTupleType(restType)) {
                     const elementTypes = restType.typeArguments || emptyArray;
                     const minLength = restType.target.minLength;
@@ -7233,7 +7235,7 @@ namespace ts {
                                 let thisParameter = signature.thisParameter;
                                 const firstThisParameterOfUnionSignatures = forEach(unionSignatures, sig => sig.thisParameter);
                                 if (firstThisParameterOfUnionSignatures) {
-                                    const thisType = getIntersectionType(mapDefined(unionSignatures, sig => sig.thisParameter && getTypeOfSymbol(sig.thisParameter)));
+                                    const thisType = getIntersectionType(mapDefined(unionSignatures, sig => sig.thisParameter && getTypeOfSymbolValueSide(sig.thisParameter)));
                                     thisParameter = createSymbolWithType(firstThisParameterOfUnionSignatures, thisType);
                                 }
                                 s = createUnionSignature(signature, unionSignatures);
@@ -7273,7 +7275,7 @@ namespace ts {
             // A signature `this` type might be a read or a write position... It's very possible that it should be invariant
             // and we should refuse to merge signatures if there are `this` types and they do not match. However, so as to be
             // permissive when calling, for now, we'll intersect the `this` types just like we do for param types in union signatures.
-            const thisType = getIntersectionType([getTypeOfSymbol(left), getTypeOfSymbol(right)]);
+            const thisType = getIntersectionType([getTypeOfSymbolValueSide(left), getTypeOfSymbolValueSide(right)]);
             return createSymbolWithType(left, thisType);
         }
 
@@ -7484,7 +7486,7 @@ namespace ts {
                 }
                 setStructuredTypeMembers(type, members, emptyArray, emptyArray, undefined, undefined);
                 if (symbol.flags & SymbolFlags.Class) {
-                    const classType = getDeclaredTypeOfClassOrInterface(symbol);
+                    const classType = getTypeOfClassOrInterfaceTypeSide(symbol);
                     const baseConstructorType = getBaseConstructorTypeOfClass(classType);
                     if (baseConstructorType.flags & (TypeFlags.Object | TypeFlags.Intersection | TypeFlags.TypeVariable)) {
                         members = createSymbolTable(getNamedMembers(members));
@@ -7494,8 +7496,8 @@ namespace ts {
                         stringIndexInfo = createIndexInfo(anyType, /*isReadonly*/ false);
                     }
                 }
-                const numberIndexInfo = symbol.flags & SymbolFlags.Enum && (getDeclaredTypeOfSymbol(symbol).flags & TypeFlags.Enum ||
-                    some(type.properties, prop => !!(getTypeOfSymbol(prop).flags & TypeFlags.NumberLike))) ? enumNumberIndexInfo : undefined;
+                const numberIndexInfo = symbol.flags & SymbolFlags.Enum && (getTypeOfSymbolTypeSide(symbol).flags & TypeFlags.Enum ||
+                    some(type.properties, prop => !!(getTypeOfSymbolValueSide(prop).flags & TypeFlags.NumberLike))) ? enumNumberIndexInfo : undefined;
                 setStructuredTypeMembers(type, members, emptyArray, emptyArray, stringIndexInfo, numberIndexInfo);
                 // We resolve the members before computing the signatures because a signature may use
                 // typeof with a qualified name expression that circularly references the type we are
@@ -7503,11 +7505,26 @@ namespace ts {
                 // will never be observed because a qualified name can't reference signatures.
                 if (symbol.flags & (SymbolFlags.Function | SymbolFlags.Method)) {
                     type.callSignatures = getSignaturesOfSymbol(symbol);
-                    type.constructSignatures = filter(type.callSignatures, sig => isJSConstructor(sig.declaration));
+                    // TODO: When ctor funcs are real classes, call signatures should return what the actual return is,
+                    // and constructor sigs should return the instance type, so this will add a map(s => clone(s).returnType = getDeclaredTypeOfClassOrInterface(symbol))
+                    // for a prototype, we can just have the call signatures be incorrect and have getSignaturesOfSymbol default to getDeclaredTypeOfClassOrInterface
+                    // (presently call sigs do the wrong thing too, so not urgent to fix)
+                    if (type.callSignatures.some(sig => isJSConstructor(sig.declaration))) {
+                        // Note: getSignaturesOfSymbol just calls getSignatureFromDeclaration, so really we want to
+                        // create a new field on signatures called resolvedConstructorFunctionType or something
+                        // (then resolve it when I remember where that is)
+                        // type.constructSignatures = getConstructorFunctionSignaturesOfSymbol(symbol);
+                        // resolveDeclaredMembers
+                        type.constructSignatures = filter(type.callSignatures, sig => isJSConstructor(sig.declaration));
+                    }
+                    else {
+                        // TODO: Put this back to what it was before ctor funcs came along
+                        type.constructSignatures = emptyArray;
+                    }
                 }
                 // And likewise for construct signatures for classes
                 if (symbol.flags & SymbolFlags.Class) {
-                    const classType = getDeclaredTypeOfClassOrInterface(symbol);
+                    const classType = getTypeOfClassOrInterfaceTypeSide(symbol);
                     let constructSignatures = getSignaturesOfSymbol(symbol.members!.get(InternalSymbolName.Constructor));
                     if (!constructSignatures.length) {
                         constructSignatures = getDefaultConstructSignatures(classType);
@@ -7529,7 +7546,7 @@ namespace ts {
                 const inferredProp = createSymbol(SymbolFlags.Property | prop.flags & optionalMask, prop.escapedName, checkFlags) as ReverseMappedSymbol;
                 inferredProp.declarations = prop.declarations;
                 inferredProp.nameType = prop.nameType;
-                inferredProp.propertyType = getTypeOfSymbol(prop);
+                inferredProp.propertyType = getTypeOfSymbolValueSide(prop);
                 inferredProp.mappedType = type.mappedType;
                 inferredProp.constraintType = type.constraintType;
                 members.set(prop.escapedName, inferredProp);
@@ -7640,7 +7657,7 @@ namespace ts {
 
         function getTypeParameterFromMappedType(type: MappedType) {
             return type.typeParameter ||
-                (type.typeParameter = getDeclaredTypeOfTypeParameter(getSymbolOfNode(type.declaration.typeParameter)));
+                (type.typeParameter = getTypeOfTypeParameter(getSymbolOfNode(type.declaration.typeParameter)));
         }
 
         function getConstraintTypeFromMappedType(type: MappedType) {
@@ -8230,7 +8247,7 @@ namespace ts {
                     hasNonUniformValueDeclaration = true;
                 }
                 declarations = addRange(declarations, prop.declarations);
-                const type = getTypeOfSymbol(prop);
+                const type = getTypeOfSymbolValueSide(prop);
                 if (!firstType) {
                     firstType = type;
                     nameType = prop.nameType;
@@ -8371,7 +8388,7 @@ namespace ts {
                 const propTypes: Type[] = [];
                 for (const prop of getPropertiesOfType(type)) {
                     if (kind === IndexKind.String || isNumericLiteralName(prop.escapedName)) {
-                        propTypes.push(getTypeOfSymbol(prop));
+                        propTypes.push(getTypeOfSymbolValueSide(prop));
                     }
                 }
                 if (kind === IndexKind.String) {
@@ -8389,7 +8406,7 @@ namespace ts {
         function getTypeParametersFromDeclaration(declaration: DeclarationWithTypeParameters): TypeParameter[] | undefined {
             let result: TypeParameter[] | undefined;
             for (const node of getEffectiveTypeParameterDeclarations(declaration)) {
-                result = appendIfUnique(result, getDeclaredTypeOfTypeParameter(node.symbol));
+                result = appendIfUnique(result, getTypeOfTypeParameter(node.symbol));
             }
             return result;
         }
@@ -8574,7 +8591,7 @@ namespace ts {
                 }
 
                 const classType = declaration.kind === SyntaxKind.Constructor ?
-                    getDeclaredTypeOfClassOrInterface(getMergedSymbol((<ClassDeclaration>declaration.parent).symbol))
+                    getTypeOfClassOrInterfaceTypeSide(getMergedSymbol((<ClassDeclaration>declaration.parent).symbol))
                     : undefined;
                 const typeParameters = classType ? classType.localTypeParameters : getTypeParametersFromDeclaration(declaration);
                 const hasRestLikeParameter = hasRestParameter(declaration) || isInJSFile(declaration) && maybeAddJsSyntheticRestParameter(declaration, parameters);
@@ -8677,7 +8694,7 @@ namespace ts {
             if (moduleSym) {
                 const resolvedModuleSymbol = resolveExternalModuleSymbol(moduleSym);
                 if (resolvedModuleSymbol) {
-                    return getTypeOfSymbol(resolvedModuleSymbol);
+                    return getTypeOfSymbolValueSide(resolvedModuleSymbol);
                 }
             }
 
@@ -8686,7 +8703,7 @@ namespace ts {
 
         function getThisTypeOfSignature(signature: Signature): Type | undefined {
             if (signature.thisParameter) {
-                return getTypeOfSymbol(signature.thisParameter);
+                return getTypeOfSymbolValueSide(signature.thisParameter);
             }
         }
 
@@ -8740,8 +8757,8 @@ namespace ts {
                 if (!pushTypeResolution(signature, TypeSystemPropertyName.ResolvedReturnType)) {
                     return errorType;
                 }
-                let type = signature.target ? instantiateType(getReturnTypeOfSignature(signature.target), signature.mapper!) :
-                    signature.unionSignatures ? getUnionType(map(signature.unionSignatures, getReturnTypeOfSignature), UnionReduction.Subtype) :
+                let type = signature.target && instantiateType(getReturnTypeOfSignature(signature.target), signature.mapper!) ||
+                    signature.unionSignatures && getUnionType(map(signature.unionSignatures, getReturnTypeOfSignature), UnionReduction.Subtype) ||
                     getReturnTypeFromAnnotation(signature.declaration!) ||
                     isJSConstructor(signature.declaration) && getJSClassType(getSymbolOfNode(signature.declaration!)) ||
                     (nodeIsMissing((<FunctionLikeDeclaration>signature.declaration).body) ? anyType : getReturnTypeFromBody(<FunctionLikeDeclaration>signature.declaration));
@@ -8771,7 +8788,7 @@ namespace ts {
 
         function getReturnTypeFromAnnotation(declaration: SignatureDeclaration | JSDocSignature) {
             if (declaration.kind === SyntaxKind.Constructor) {
-                return getDeclaredTypeOfClassOrInterface(getMergedSymbol((<ClassDeclaration>declaration.parent).symbol));
+                return getTypeOfClassOrInterfaceTypeSide(getMergedSymbol((<ClassDeclaration>declaration.parent).symbol));
             }
             if (isJSDocConstructSignature(declaration)) {
                 return getTypeFromTypeNode((declaration.parameters[0] as ParameterDeclaration).type!); // TODO: GH#18217
@@ -8804,7 +8821,7 @@ namespace ts {
 
         function tryGetRestTypeOfSignature(signature: Signature): Type | undefined {
             if (signature.hasRestParameter) {
-                const sigRestType = getTypeOfSymbol(signature.parameters[signature.parameters.length - 1]);
+                const sigRestType = getTypeOfSymbolValueSide(signature.parameters[signature.parameters.length - 1]);
                 const restType = isTupleType(sigRestType) ? getRestTypeOfTupleType(sigRestType) : sigRestType;
                 return restType && getIndexTypeOfType(restType, IndexKind.Number);
             }
@@ -9077,7 +9094,7 @@ namespace ts {
          * Get type from type-reference that reference to class or interface
          */
         function getTypeFromClassOrInterfaceReference(node: NodeWithTypeArguments, symbol: Symbol, typeArgs: Type[] | undefined): Type {
-            const type = <InterfaceType>getDeclaredTypeOfSymbol(getMergedSymbol(symbol));
+            const type = <InterfaceType>getTypeOfSymbolTypeSide(getMergedSymbol(symbol));
             const typeParameters = type.localTypeParameters;
             if (typeParameters) {
                 const numTypeArguments = length(node.typeArguments);
@@ -9110,7 +9127,7 @@ namespace ts {
         }
 
         function getTypeAliasInstantiation(symbol: Symbol, typeArguments: ReadonlyArray<Type> | undefined): Type {
-            const type = getDeclaredTypeOfSymbol(symbol);
+            const type = getTypeOfSymbolTypeSide(symbol);
             const links = getSymbolLinks(symbol);
             const typeParameters = links.typeParameters!;
             const id = getTypeListId(typeArguments);
@@ -9127,7 +9144,7 @@ namespace ts {
          * declared type. Instantiations are cached using the type identities of the type arguments as the key.
          */
         function getTypeFromTypeAliasReference(node: NodeWithTypeArguments, symbol: Symbol, typeArguments: Type[] | undefined): Type {
-            const type = getDeclaredTypeOfSymbol(symbol);
+            const type = getTypeOfSymbolTypeSide(symbol);
             const typeParameters = getSymbolLinks(symbol).typeParameters;
             if (typeParameters) {
                 const numTypeArguments = length(node.typeArguments);
@@ -9184,7 +9201,7 @@ namespace ts {
             }
 
             // Get type from reference to named type that cannot be generic (enum or type parameter)
-            const res = tryGetDeclaredTypeOfSymbol(symbol);
+            const res = tryGetTypeOfSymbolTypeSide(symbol);
             if (res) {
                 return checkNoTypeArguments(node, symbol) ?
                     res.flags & TypeFlags.TypeParameter ? getConstrainedTypeVariable(<TypeParameter>res, node) : getRegularTypeOfLiteralType(res) :
@@ -9202,7 +9219,7 @@ namespace ts {
 
             // Resolve the type reference as a Type for the purpose of reporting errors.
             resolveTypeReferenceName(getTypeReferenceName(node), SymbolFlags.Type);
-            return getTypeOfSymbol(symbol);
+            return getTypeOfSymbolValueSide(symbol);
         }
 
         /**
@@ -9215,7 +9232,7 @@ namespace ts {
             // correct instance type for the symbol on the LHS by finding the type for RHS. For example if we want to get the type of the symbol `foo`:
             //   var foo = function() {}
             // We will find the static type of the assigned anonymous function.
-            const staticType = getTypeOfSymbol(symbol);
+            const staticType = getTypeOfSymbolValueSide(symbol);
             const instanceType =
                 staticType.symbol &&
                 staticType.symbol !== symbol && // Make sure this is an assignment like expression by checking that symbol -> type -> symbol doesn't roundtrips.
@@ -9243,7 +9260,7 @@ namespace ts {
             if (symbol.flags & SymbolFlags.Function &&
                 isJSDocTypeReference(node) &&
                 isJSConstructor(symbol.valueDeclaration)) {
-                const resolved = resolveStructuredTypeMembers(<ObjectType>getTypeOfSymbol(symbol));
+                const resolved = resolveStructuredTypeMembers(<ObjectType>getTypeOfSymbolValueSide(symbol));
                 if (resolved.callSignatures.length === 1) {
                     return getReturnTypeOfSignature(resolved.callSignatures[0]);
                 }
@@ -9411,7 +9428,7 @@ namespace ts {
             if (!symbol) {
                 return arity ? emptyGenericType : emptyObjectType;
             }
-            const type = getDeclaredTypeOfSymbol(symbol);
+            const type = getTypeOfSymbolTypeSide(symbol);
             if (!(type.flags & TypeFlags.Object)) {
                 error(getTypeDeclaration(symbol), Diagnostics.Global_type_0_must_be_a_class_or_interface_type, symbolName(symbol));
                 return arity ? emptyGenericType : emptyObjectType;
@@ -9595,7 +9612,7 @@ namespace ts {
             const lengthSymbol = createSymbol(SymbolFlags.Property, "length" as __String);
             lengthSymbol.type = hasRestElement ? numberType : getUnionType(literalTypes);
             properties.push(lengthSymbol);
-            const type = <TupleType & InterfaceTypeWithDeclaredMembers>createObjectType(ObjectFlags.Tuple | ObjectFlags.Reference);
+            const type = <TupleType & InterfaceTypeWithTypeSideMembers>createObjectType(ObjectFlags.Tuple | ObjectFlags.Reference);
             type.typeParameters = typeParameters;
             type.outerTypeParameters = undefined;
             type.localTypeParameters = typeParameters;
@@ -9606,11 +9623,11 @@ namespace ts {
             type.thisType = createTypeParameter();
             type.thisType.isThisType = true;
             type.thisType.constraint = type;
-            type.declaredProperties = properties;
-            type.declaredCallSignatures = emptyArray;
-            type.declaredConstructSignatures = emptyArray;
-            type.declaredStringIndexInfo = undefined;
-            type.declaredNumberIndexInfo = undefined;
+            type.typeSideProperties = properties;
+            type.typeSideCallSignatures = emptyArray;
+            type.typeSideConstructSignatures = emptyArray;
+            type.typeSideStringIndexInfo = undefined;
+            type.typeSideNumberIndexInfo = undefined;
             type.minLength = minLength;
             type.hasRestElement = hasRestElement;
             type.readonly = readonly;
@@ -10292,7 +10309,7 @@ namespace ts {
                             getNodeLinks(accessNode!).resolvedSymbol = prop;
                         }
                     }
-                    const propType = getTypeOfSymbol(prop);
+                    const propType = getTypeOfSymbolValueSide(prop);
                     return accessExpression && getAssignmentTargetKind(accessExpression) !== AssignmentKind.Definite ?
                         getFlowTypeOfReference(accessExpression, propType) :
                         propType;
@@ -10721,7 +10738,7 @@ namespace ts {
             if (node.locals) {
                 node.locals.forEach(symbol => {
                     if (symbol.flags & SymbolFlags.TypeParameter) {
-                        result = append(result, getDeclaredTypeOfSymbol(symbol));
+                        result = append(result, getTypeOfSymbolTypeSide(symbol));
                     }
                 });
             }
@@ -10761,7 +10778,7 @@ namespace ts {
         function getTypeFromInferTypeNode(node: InferTypeNode): Type {
             const links = getNodeLinks(node);
             if (!links.resolvedType) {
-                links.resolvedType = getDeclaredTypeOfTypeParameter(getSymbolOfNode(node.typeParameter));
+                links.resolvedType = getTypeOfTypeParameter(getSymbolOfNode(node.typeParameter));
             }
             return links.resolvedType;
         }
@@ -10836,7 +10853,7 @@ namespace ts {
             const resolvedSymbol = resolveSymbol(symbol);
             links.resolvedSymbol = resolvedSymbol;
             if (meaning === SymbolFlags.Value) {
-                return links.resolvedType = getTypeOfSymbol(symbol); // intentionally doesn't use resolved symbol so type is cached as expected on the alias
+                return links.resolvedType = getTypeOfSymbolValueSide(symbol); // intentionally doesn't use resolved symbol so type is cached as expected on the alias
             }
             else {
                 return links.resolvedType = getTypeReferenceType(node, resolvedSymbol); // getTypeReferenceType doesn't handle aliases - it must get the resolved symbol
@@ -10950,12 +10967,12 @@ namespace ts {
                 }
                 if (members.has(leftProp.escapedName)) {
                     const rightProp = members.get(leftProp.escapedName)!;
-                    const rightType = getTypeOfSymbol(rightProp);
+                    const rightType = getTypeOfSymbolValueSide(rightProp);
                     if (rightProp.flags & SymbolFlags.Optional) {
                         const declarations = concatenate(leftProp.declarations, rightProp.declarations);
                         const flags = SymbolFlags.Property | (leftProp.flags & SymbolFlags.Optional);
                         const result = createSymbol(flags, leftProp.escapedName);
-                        result.type = getUnionType([getTypeOfSymbol(leftProp), getTypeWithFacts(rightType, TypeFacts.NEUndefined)]);
+                        result.type = getUnionType([getTypeOfSymbolValueSide(leftProp), getTypeWithFacts(rightType, TypeFacts.NEUndefined)]);
                         result.leftSpread = leftProp;
                         result.rightSpread = rightProp;
                         result.declarations = declarations;
@@ -10992,7 +11009,7 @@ namespace ts {
             }
             const flags = SymbolFlags.Property | (prop.flags & SymbolFlags.Optional);
             const result = createSymbol(flags, prop.escapedName, readonly ? CheckFlags.Readonly : 0);
-            result.type = isSetonlyAccessor ? undefinedType : getTypeOfSymbol(prop);
+            result.type = isSetonlyAccessor ? undefinedType : getTypeOfSymbolValueSide(prop);
             result.declarations = prop.declarations;
             result.nameType = prop.nameType;
             result.syntheticOrigin = prop;
@@ -11081,7 +11098,7 @@ namespace ts {
             if (parent && (isClassLike(parent) || parent.kind === SyntaxKind.InterfaceDeclaration)) {
                 if (!hasModifier(container, ModifierFlags.Static) &&
                     (container.kind !== SyntaxKind.Constructor || isNodeDescendantOf(node, (<ConstructorDeclaration>container).body!))) {
-                    return getDeclaredTypeOfClassOrInterface(getSymbolOfNode(parent as ClassLikeDeclaration | InterfaceDeclaration)).thisType!;
+                    return getTypeOfClassOrInterfaceTypeSide(getSymbolOfNode(parent as ClassLikeDeclaration | InterfaceDeclaration)).thisType!;
                 }
             }
             error(node, Diagnostics.A_this_type_is_available_only_in_a_non_static_member_of_a_class_or_interface);
@@ -11182,7 +11199,7 @@ namespace ts {
                 case SyntaxKind.Identifier:
                 case SyntaxKind.QualifiedName:
                     const symbol = getSymbolAtLocation(node);
-                    return symbol ? getDeclaredTypeOfSymbol(symbol) : errorType;
+                    return symbol ? getTypeOfSymbolTypeSide(symbol) : errorType;
                 default:
                     return errorType;
             }
@@ -12499,14 +12516,14 @@ namespace ts {
                 enumRelation.set(id, RelationComparisonResult.FailedAndReported);
                 return false;
             }
-            const targetEnumType = getTypeOfSymbol(targetSymbol);
-            for (const property of getPropertiesOfType(getTypeOfSymbol(sourceSymbol))) {
+            const targetEnumType = getTypeOfSymbolValueSide(targetSymbol);
+            for (const property of getPropertiesOfType(getTypeOfSymbolValueSide(sourceSymbol))) {
                 if (property.flags & SymbolFlags.EnumMember) {
                     const targetProperty = getPropertyOfType(targetEnumType, property.escapedName);
                     if (!targetProperty || !(targetProperty.flags & SymbolFlags.EnumMember)) {
                         if (errorReporter) {
                             errorReporter(Diagnostics.Property_0_is_missing_in_type_1, symbolName(property),
-                                typeToString(getDeclaredTypeOfSymbol(targetSymbol), /*enclosingDeclaration*/ undefined, TypeFormatFlags.UseFullyQualifiedType));
+                                typeToString(getTypeOfSymbolTypeSide(targetSymbol), /*enclosingDeclaration*/ undefined, TypeFormatFlags.UseFullyQualifiedType));
                             enumRelation.set(id, RelationComparisonResult.FailedAndReported);
                         }
                         else {
@@ -12639,7 +12656,7 @@ namespace ts {
                 if (headMessage && errorNode && !result && source.symbol) {
                     const links = getSymbolLinks(source.symbol);
                     if (links.originatingImport && !isImportCall(links.originatingImport)) {
-                        const helpfulRetry = checkTypeRelatedTo(getTypeOfSymbol(links.target!), target, relation, /*errorNode*/ undefined);
+                        const helpfulRetry = checkTypeRelatedTo(getTypeOfSymbolValueSide(links.target!), target, relation, /*errorNode*/ undefined);
                         if (helpfulRetry) {
                             // Likely an incorrect import. Issue a helpful diagnostic to produce a quickfix to change the import
                             const diag = createDiagnosticForNode(links.originatingImport, Diagnostics.Type_originates_at_this_import_A_namespace_style_import_cannot_be_called_or_constructed_and_will_cause_a_failure_at_runtime_Consider_using_a_default_import_or_import_require_here_instead);
@@ -13141,7 +13158,7 @@ namespace ts {
                     if (sourceProperties) {
                         const sourcePropertiesFiltered = findDiscriminantProperties(sourceProperties, target);
                         if (sourcePropertiesFiltered) {
-                            return discriminateTypeByDiscriminableItems(<UnionType>target, map(sourcePropertiesFiltered, p => ([() => getTypeOfSymbol(p), p.escapedName] as [() => Type, __String])), isRelatedTo);
+                            return discriminateTypeByDiscriminableItems(<UnionType>target, map(sourcePropertiesFiltered, p => ([() => getTypeOfSymbolValueSide(p), p.escapedName] as [() => Type, __String])), isRelatedTo);
                         }
                     }
                 }
@@ -13727,7 +13744,7 @@ namespace ts {
                 // fixed limit before incurring the cost of any allocations:
                 let numCombinations = 1;
                 for (const sourceProperty of sourcePropertiesFiltered) {
-                    numCombinations *= countTypes(getTypeOfSymbol(sourceProperty));
+                    numCombinations *= countTypes(getTypeOfSymbolValueSide(sourceProperty));
                     if (numCombinations > 25) {
                         // We've reached the complexity limit.
                         return Ternary.False;
@@ -13739,7 +13756,7 @@ namespace ts {
                 const excludedProperties = createUnderscoreEscapedMap<true>();
                 for (let i = 0; i < sourcePropertiesFiltered.length; i++) {
                     const sourceProperty = sourcePropertiesFiltered[i];
-                    const sourcePropertyType = getTypeOfSymbol(sourceProperty);
+                    const sourcePropertyType = getTypeOfSymbolValueSide(sourceProperty);
                     sourceDiscriminantTypes[i] = sourcePropertyType.flags & TypeFlags.Union
                         ? (sourcePropertyType as UnionType).types
                         : [sourcePropertyType];
@@ -13830,7 +13847,7 @@ namespace ts {
                         if (!unionParent) {
                             if (!related) {
                                 // Can't assign to a target individually - have to fallback to assigning to the _whole_ intersection (which forces normalization)
-                                return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors);
+                                return isRelatedTo(source, addOptionality(getTypeOfSymbolValueSide(targetProp), targetIsOptional), reportErrors);
                             }
                             result &= related;
                         }
@@ -13848,12 +13865,12 @@ namespace ts {
                         // If it turns out this is too costly too often, we can replicate the error handling logic within
                         // typeRelatedToSomeType without the discriminatable type branch (as that requires a manifest union
                         // type on which to hand discriminable properties, which we are expressly trying to avoid here)
-                        return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors);
+                        return isRelatedTo(source, addOptionality(getTypeOfSymbolValueSide(targetProp), targetIsOptional), reportErrors);
                     }
                     return result;
                 }
                 else {
-                    return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors, /*headMessage*/ undefined, isIntersectionConstituent);
+                    return isRelatedTo(source, addOptionality(getTypeOfSymbolValueSide(targetProp), targetIsOptional), reportErrors, /*headMessage*/ undefined, isIntersectionConstituent);
                 }
             }
 
@@ -13966,7 +13983,7 @@ namespace ts {
                 if (isObjectLiteralType(target)) {
                     for (const sourceProp of excludeProperties(getPropertiesOfType(source), excludedProperties)) {
                         if (!getPropertyOfObjectType(target, sourceProp.escapedName)) {
-                            const sourceType = getTypeOfSymbol(sourceProp);
+                            const sourceType = getTypeOfSymbolValueSide(sourceProp);
                             if (!(sourceType === undefinedType || sourceType === undefinedWideningType)) {
                                 if (reportErrors) {
                                     reportError(Diagnostics.Property_0_does_not_exist_on_type_1, symbolToString(sourceProp), typeToString(target));
@@ -14011,7 +14028,7 @@ namespace ts {
                     if (!(targetProp.flags & SymbolFlags.Prototype)) {
                         const sourceProp = getPropertyOfType(source, targetProp.escapedName);
                         if (sourceProp && sourceProp !== targetProp) {
-                            const related = propertyRelatedTo(source, target, sourceProp, targetProp, getTypeOfSymbol, reportErrors, isIntersectionConstituent);
+                            const related = propertyRelatedTo(source, target, sourceProp, targetProp, getTypeOfSymbolValueSide, reportErrors, isIntersectionConstituent);
                             if (!related) {
                                 return Ternary.False;
                             }
@@ -14164,7 +14181,7 @@ namespace ts {
                         continue;
                     }
                     if (kind === IndexKind.String || isNumericLiteralName(prop.escapedName)) {
-                        const related = isRelatedTo(getTypeOfSymbol(prop), target, reportErrors);
+                        const related = isRelatedTo(getTypeOfSymbolValueSide(prop), target, reportErrors);
                         if (!related) {
                             if (reportErrors) {
                                 reportError(Diagnostics.Property_0_is_incompatible_with_index_signature, symbolToString(prop));
@@ -14468,7 +14485,7 @@ namespace ts {
 
         // Return the declaring class type of a property or undefined if property not declared in class
         function getDeclaringClass(prop: Symbol) {
-            return prop.parent && prop.parent.flags & SymbolFlags.Class ? getDeclaredTypeOfSymbol(getParentOfSymbol(prop)!) : undefined;
+            return prop.parent && prop.parent.flags & SymbolFlags.Class ? getTypeOfSymbolTypeSide(getParentOfSymbol(prop)!) : undefined;
         }
 
         // Return true if some underlying source property is declared in a class that derives
@@ -14545,7 +14562,7 @@ namespace ts {
             if (isReadonlySymbol(sourceProp) !== isReadonlySymbol(targetProp)) {
                 return Ternary.False;
             }
-            return compareTypes(getTypeOfSymbol(sourceProp), getTypeOfSymbol(targetProp));
+            return compareTypes(getTypeOfSymbolValueSide(sourceProp), getTypeOfSymbolValueSide(targetProp));
         }
 
         function isMatchingSignature(source: Signature, target: Signature, partialMatch: boolean) {
@@ -14938,7 +14955,7 @@ namespace ts {
         function transformTypeOfMembers(type: Type, f: (propertyType: Type) => Type) {
             const members = createSymbolTable();
             for (const property of getPropertiesOfObjectType(type)) {
-                const original = getTypeOfSymbol(property);
+                const original = getTypeOfSymbolValueSide(property);
                 const updated = f(original);
                 members.set(property.escapedName, updated === original ? property : createSymbolWithType(property, updated));
             }
@@ -14984,7 +15001,7 @@ namespace ts {
                     if (isObjectLiteralType(type)) {
                         const prop = getPropertyOfObjectType(type, context.propertyName!);
                         if (prop) {
-                            forEachType(getTypeOfSymbol(prop), t => {
+                            forEachType(getTypeOfSymbolValueSide(prop), t => {
                                 siblings.push(t);
                             });
                         }
@@ -15016,7 +15033,7 @@ namespace ts {
                 // widen accessor based properties here.
                 return prop;
             }
-            const original = getTypeOfSymbol(prop);
+            const original = getTypeOfSymbolValueSide(prop);
             const propContext = context && createWideningContext(context, prop.escapedName, /*siblings*/ undefined);
             const widened = getWidenedTypeWithContext(original, propContext);
             return widened === original ? prop : createSymbolWithType(prop, widened);
@@ -15127,7 +15144,7 @@ namespace ts {
                 }
                 if (isObjectLiteralType(type)) {
                     for (const p of getPropertiesOfObjectType(type)) {
-                        const t = getTypeOfSymbol(p);
+                        const t = getTypeOfSymbolValueSide(p);
                         if (getObjectFlags(t) & ObjectFlags.ContainsWideningType) {
                             if (!reportWideningErrorsInType(t)) {
                                 error(p.valueDeclaration, Diagnostics.Object_literal_s_property_0_implicitly_has_an_1_type, symbolToString(p), typeToString(getWidenedType(t)));
@@ -15393,7 +15410,7 @@ namespace ts {
         // arrow function, but is considered partially inferable because property 'a' has an inferable type.
         function isPartiallyInferableType(type: Type): boolean {
             return !(getObjectFlags(type) & ObjectFlags.NonInferrableType) ||
-                isObjectLiteralType(type) && some(getPropertiesOfType(type), prop => isPartiallyInferableType(getTypeOfSymbol(prop)));
+                isObjectLiteralType(type) && some(getPropertiesOfType(type), prop => isPartiallyInferableType(getTypeOfSymbolValueSide(prop)));
         }
 
         function createReverseMappedType(source: Type, target: MappedType, constraint: IndexType) {
@@ -15443,9 +15460,9 @@ namespace ts {
                         yield targetProp;
                     }
                     else if (matchDiscriminantProperties) {
-                        const targetType = getTypeOfSymbol(targetProp);
+                        const targetType = getTypeOfSymbolValueSide(targetProp);
                         if (targetType.flags & TypeFlags.Unit) {
-                            const sourceType = getTypeOfSymbol(sourceProp);
+                            const sourceType = getTypeOfSymbolValueSide(sourceProp);
                             if (!(sourceType.flags & TypeFlags.Any || getRegularTypeOfLiteralType(sourceType) === getRegularTypeOfLiteralType(targetType))) {
                                 yield targetProp;
                             }
@@ -15883,7 +15900,7 @@ namespace ts {
                     }
                     // If no inferences can be made to K's constraint, infer from a union of the property types
                     // in the source to the template type X.
-                    const propTypes = map(getPropertiesOfType(source), getTypeOfSymbol);
+                    const propTypes = map(getPropertiesOfType(source), getTypeOfSymbolValueSide);
                     const stringIndexType = getIndexTypeOfType(source, IndexKind.String);
                     const numberIndexInfo = getNonEnumNumberIndexInfo(source);
                     const numberIndexType = numberIndexInfo && numberIndexInfo.type;
@@ -15968,7 +15985,7 @@ namespace ts {
                 for (const targetProp of properties) {
                     const sourceProp = getPropertyOfType(source, targetProp.escapedName);
                     if (sourceProp) {
-                        inferFromTypes(getTypeOfSymbol(sourceProp), getTypeOfSymbol(targetProp));
+                        inferFromTypes(getTypeOfSymbolValueSide(sourceProp), getTypeOfSymbolValueSide(targetProp));
                     }
                 }
             }
@@ -16296,7 +16313,7 @@ namespace ts {
 
         function getDeclaredTypeOfReference(expr: Node): Type | undefined {
             if (expr.kind === SyntaxKind.Identifier) {
-                return getTypeOfSymbol(getResolvedSymbol(<Identifier>expr));
+                return getTypeOfSymbolValueSide(getResolvedSymbol(<Identifier>expr));
             }
             if (isAccessExpression(expr)) {
                 const type = getDeclaredTypeOfReference(expr.expression);
@@ -16320,7 +16337,7 @@ namespace ts {
                     if ((<TransientSymbol>prop).isDiscriminantProperty === undefined) {
                         (<TransientSymbol>prop).isDiscriminantProperty =
                             ((<TransientSymbol>prop).checkFlags & CheckFlags.Discriminant) === CheckFlags.Discriminant &&
-                            isDiscriminantType(getTypeOfSymbol(prop));
+                            isDiscriminantType(getTypeOfSymbolValueSide(prop));
                     }
                     return !!(<TransientSymbol>prop).isDiscriminantProperty;
                 }
@@ -17620,7 +17637,7 @@ namespace ts {
                 const prototypeProperty = getPropertyOfType(rightType, "prototype" as __String);
                 if (prototypeProperty) {
                     // Target type is type of the prototype property
-                    const prototypePropertyType = getTypeOfSymbol(prototypeProperty);
+                    const prototypePropertyType = getTypeOfSymbolValueSide(prototypeProperty);
                     if (!isTypeAny(prototypePropertyType)) {
                         targetType = prototypePropertyType;
                     }
@@ -17754,7 +17771,7 @@ namespace ts {
             // to it at the given location. Since we have no control flow information for the
             // hypothetical reference (control flow information is created and attached by the
             // binder), we simply return the declared type of the symbol.
-            return getTypeOfSymbol(symbol);
+            return getTypeOfSymbolValueSide(symbol);
         }
 
         function getControlFlowContainer(node: Node): Node {
@@ -17797,7 +17814,7 @@ namespace ts {
         }
 
         function isConstVariable(symbol: Symbol) {
-            return symbol.flags & SymbolFlags.Variable && (getDeclarationNodeFlagsFromSymbol(symbol) & NodeFlags.Const) !== 0 && getTypeOfSymbol(symbol) !== autoArrayType;
+            return symbol.flags & SymbolFlags.Variable && (getDeclarationNodeFlagsFromSymbol(symbol) & NodeFlags.Const) !== 0 && getTypeOfSymbolValueSide(symbol) !== autoArrayType;
         }
 
         /** remove undefined from the annotated type of a parameter when there is an initializer (that doesn't include undefined) */
@@ -17869,7 +17886,7 @@ namespace ts {
                 }
 
                 getNodeLinks(container).flags |= NodeCheckFlags.CaptureArguments;
-                return getTypeOfSymbol(symbol);
+                return getTypeOfSymbolValueSide(symbol);
             }
 
             // We should only mark aliases as referenced if there isn't a local value declaration
@@ -17919,7 +17936,7 @@ namespace ts {
 
             checkNestedBlockScopedBinding(node, symbol);
 
-            const type = getConstraintForLocation(getTypeOfSymbol(localOrExportSymbol), node);
+            const type = getConstraintForLocation(getTypeOfSymbolValueSide(localOrExportSymbol), node);
             const assignmentKind = getAssignmentTargetKind(node);
 
             if (assignmentKind) {
@@ -18160,7 +18177,7 @@ namespace ts {
          */
         function classDeclarationExtendsNull(classDecl: ClassDeclaration): boolean {
             const classSymbol = getSymbolOfNode(classDecl);
-            const classInstanceType = <InterfaceType>getDeclaredTypeOfSymbol(classSymbol);
+            const classInstanceType = <InterfaceType>getTypeOfSymbolTypeSide(classSymbol);
             const baseConstructorType = getBaseConstructorTypeOfClass(classInstanceType);
 
             return baseConstructorType === nullWideningType;
@@ -18239,7 +18256,7 @@ namespace ts {
 
             const type = tryGetThisTypeAt(node, /*includeGlobalThis*/ true, container);
             if (noImplicitThis) {
-                const globalThisType = getTypeOfSymbol(globalThisSymbol);
+                const globalThisType = getTypeOfSymbolValueSide(globalThisSymbol);
                 if (type === globalThisType && capturedByArrowFunction) {
                     error(node, Diagnostics.The_containing_arrow_function_captures_the_global_value_of_this);
                 }
@@ -18294,7 +18311,7 @@ namespace ts {
 
             if (isClassLike(container.parent)) {
                 const symbol = getSymbolOfNode(container.parent);
-                const type = hasModifier(container, ModifierFlags.Static) ? getTypeOfSymbol(symbol) : (<InterfaceType>getDeclaredTypeOfSymbol(symbol)).thisType!;
+                const type = hasModifier(container, ModifierFlags.Static) ? getTypeOfSymbolValueSide(symbol) : (<InterfaceType>getTypeOfSymbolTypeSide(symbol)).thisType!;
                 return getFlowTypeOfReference(node, type);
             }
 
@@ -18308,10 +18325,10 @@ namespace ts {
                 // look up in the source file's locals or exports
                 if (container.commonJsModuleIndicator) {
                     const fileSymbol = getSymbolOfNode(container);
-                    return fileSymbol && getTypeOfSymbol(fileSymbol);
+                    return fileSymbol && getTypeOfSymbolValueSide(fileSymbol);
                 }
                 else if (includeGlobalThis) {
-                    return getTypeOfSymbol(globalThisSymbol);
+                    return getTypeOfSymbolValueSide(globalThisSymbol);
                 }
             }
         }
@@ -18534,7 +18551,7 @@ namespace ts {
                 return errorType;
             }
 
-            const classType = <InterfaceType>getDeclaredTypeOfSymbol(getSymbolOfNode(classLikeDeclaration));
+            const classType = <InterfaceType>getTypeOfSymbolTypeSide(getSymbolOfNode(classLikeDeclaration));
             const baseClassType = classType && getBaseTypes(classType)[0];
             if (!baseClassType) {
                 return errorType;
@@ -18617,7 +18634,7 @@ namespace ts {
                 if (contextualSignature) {
                     const thisParameter = contextualSignature.thisParameter;
                     if (thisParameter) {
-                        return getTypeOfSymbol(thisParameter);
+                        return getTypeOfSymbolValueSide(thisParameter);
                     }
                 }
             }
@@ -18700,7 +18717,7 @@ namespace ts {
                     // from leaking, and should lock in cached parameter types via `assignContextualParameterTypes`
                     // which we will then immediately use the results of below.
                     contextuallyCheckFunctionExpressionOrObjectLiteralMethod(func);
-                    const type = getTypeOfSymbol(getMergedSymbol(func.symbol));
+                    const type = getTypeOfSymbolValueSide(getMergedSymbol(func.symbol));
                     if (isTypeAny(type)) {
                         return type;
                     }
@@ -18985,7 +19002,7 @@ namespace ts {
                 else if (t.flags & TypeFlags.StructuredType) {
                     const prop = getPropertyOfType(t, name);
                     if (prop) {
-                        return getTypeOfSymbol(prop);
+                        return getTypeOfSymbolValueSide(prop);
                     }
                     if (isTupleType(t)) {
                         const restType = getRestTypeOfTupleType(t);
@@ -19362,7 +19379,7 @@ namespace ts {
         function getJsxManagedAttributesFromLocatedAttributes(context: JsxOpeningLikeElement, ns: Symbol, attributesType: Type) {
             const managedSym = getJsxLibraryManagedAttributes(ns);
             if (managedSym) {
-                const declaredManagedType = getDeclaredTypeOfSymbol(managedSym);
+                const declaredManagedType = getTypeOfSymbolTypeSide(managedSym);
                 const ctorType = getStaticTypeOfReferencedJsxConstructor(context);
                 if (length((declaredManagedType as GenericType).typeParameters) >= 2) {
                     const args = fillMissingTypeArguments([ctorType, attributesType], (declaredManagedType as GenericType).typeParameters, 2, isInJSFile(context));
@@ -19674,7 +19691,7 @@ namespace ts {
             const propTypes: Type[] = [];
             for (let i = 0; i < properties.length; i++) {
                 if (kind === IndexKind.String || isNumericName(node.properties[i + offset].name!)) {
-                    propTypes.push(getTypeOfSymbol(properties[i]));
+                    propTypes.push(getTypeOfSymbolValueSide(properties[i]));
                 }
             }
             const unionType = propTypes.length ? getUnionType(propTypes, UnionReduction.Subtype) : undefinedType;
@@ -20089,7 +20106,7 @@ namespace ts {
             const namespace = getJsxNamespaceAt(location);
             const exports = namespace && getExportsOfSymbol(namespace);
             const typeSymbol = exports && getSymbol(exports, name, SymbolFlags.Type);
-            return typeSymbol ? getDeclaredTypeOfSymbol(typeSymbol) : errorType;
+            return typeSymbol ? getTypeOfSymbolTypeSide(typeSymbol) : errorType;
         }
 
         /**
@@ -20168,7 +20185,7 @@ namespace ts {
             // JSX.ElementAttributesProperty | JSX.ElementChildrenAttribute [symbol]
             const jsxElementAttribPropInterfaceSym = jsxNamespace && getSymbol(jsxNamespace.exports!, nameOfAttribPropContainer, SymbolFlags.Type);
             // JSX.ElementAttributesProperty | JSX.ElementChildrenAttribute [type]
-            const jsxElementAttribPropInterfaceType = jsxElementAttribPropInterfaceSym && getDeclaredTypeOfSymbol(jsxElementAttribPropInterfaceSym);
+            const jsxElementAttribPropInterfaceType = jsxElementAttribPropInterfaceSym && getTypeOfSymbolTypeSide(jsxElementAttribPropInterfaceSym);
             // The properties of JSX.ElementAttributesProperty | JSX.ElementChildrenAttribute
             const propertiesOfJsxElementAttribPropInterface = jsxElementAttribPropInterfaceType && getPropertiesOfType(jsxElementAttribPropInterfaceType);
             if (propertiesOfJsxElementAttribPropInterface) {
@@ -20246,7 +20263,7 @@ namespace ts {
                     const stringLiteralTypeName = type.value;
                     const intrinsicProp = getPropertyOfType(intrinsicElementsType, escapeLeadingUnderscores(stringLiteralTypeName));
                     if (intrinsicProp) {
-                        return getTypeOfSymbol(intrinsicProp);
+                        return getTypeOfSymbolValueSide(intrinsicProp);
                     }
                     const indexSignatureType = getIndexTypeOfType(intrinsicElementsType, IndexKind.String);
                     if (indexSignatureType) {
@@ -20294,7 +20311,7 @@ namespace ts {
             if (!links.resolvedJsxElementAttributesType) {
                 const symbol = getIntrinsicTagSymbol(node);
                 if (links.jsxFlags & JsxFlags.IntrinsicNamedElement) {
-                    return links.resolvedJsxElementAttributesType = getTypeOfSymbol(symbol);
+                    return links.resolvedJsxElementAttributesType = getTypeOfSymbolValueSide(symbol);
                 }
                 else if (links.jsxFlags & JsxFlags.IntrinsicIndexedElement) {
                     return links.resolvedJsxElementAttributesType = getIndexInfoOfSymbol(symbol, IndexKind.String)!.type;
@@ -20528,7 +20545,7 @@ namespace ts {
             // Find the first enclosing class that has the declaring classes of the protected constituents
             // of the property as base classes
             let enclosingClass = forEachEnclosingClass(node, enclosingDeclaration => {
-                const enclosingClass = <InterfaceType>getDeclaredTypeOfSymbol(getSymbolOfNode(enclosingDeclaration)!);
+                const enclosingClass = <InterfaceType>getTypeOfSymbolTypeSide(getSymbolOfNode(enclosingDeclaration)!);
                 return isClassDerivedFromDeclaringClasses(enclosingClass, prop) ? enclosingClass : undefined;
             });
             // A protected property is accessible if the property is within the declaring class or classes derived from it
@@ -20690,7 +20707,7 @@ namespace ts {
                         return errorType;
                     }
                 }
-                propType = getConstraintForLocation(getTypeOfSymbol(prop), node);
+                propType = getConstraintForLocation(getTypeOfSymbolValueSide(prop), node);
             }
             return getFlowTypeOfAccessExpression(node, prop, propType, right);
         }
@@ -20795,7 +20812,7 @@ namespace ts {
             if (!(prop.parent!.flags & SymbolFlags.Class)) {
                 return false;
             }
-            let classType: InterfaceType | undefined = getTypeOfSymbol(prop.parent!) as InterfaceType;
+            let classType: InterfaceType | undefined = getTypeOfSymbolValueSide(prop.parent!) as InterfaceType;
             while (true) {
                 classType = classType.symbol && getSuperClass(classType) as InterfaceType | undefined;
                 if (!classType) {
@@ -20856,7 +20873,7 @@ namespace ts {
         }
 
         function typeHasStaticProperty(propName: __String, containingType: Type): boolean {
-            const prop = containingType.symbol && getPropertyOfType(getTypeOfSymbol(containingType.symbol), propName);
+            const prop = containingType.symbol && getPropertyOfType(getTypeOfSymbolValueSide(containingType.symbol), propName);
             return prop !== undefined && prop.valueDeclaration && hasModifier(prop.valueDeclaration, ModifierFlags.Static);
         }
 
@@ -20901,7 +20918,7 @@ namespace ts {
             const hasProp = (name: "set" | "get", argCount = 1) => {
                 const prop = getPropertyOfObjectType(objectType, <__String>name);
                 if (prop) {
-                    const s = getSingleCallSignature(getTypeOfSymbol(prop));
+                    const s = getSingleCallSignature(getTypeOfSymbolValueSide(prop));
                     if (s && getMinArgumentCount(s) === argCount && typeToString(getTypeAtPosition(s, 0)) === "string") {
                         return true;
                     }
@@ -21682,14 +21699,14 @@ namespace ts {
                     // For a class decorator, the `target` is the type of the class (e.g. the
                     // "static" or "constructor" side of the class).
                     return [
-                        createSyntheticExpression(expr, getTypeOfSymbol(getSymbolOfNode(parent)))
+                        createSyntheticExpression(expr, getTypeOfSymbolValueSide(getSymbolOfNode(parent)))
                     ];
                 case SyntaxKind.Parameter:
                     // A parameter declaration decorator will have three arguments (see
                     // `ParameterDecorator` in core.d.ts).
                     const func = <FunctionLikeDeclaration>parent.parent;
                     return [
-                        createSyntheticExpression(expr, parent.parent.kind === SyntaxKind.Constructor ? getTypeOfSymbol(getSymbolOfNode(func)) : errorType),
+                        createSyntheticExpression(expr, parent.parent.kind === SyntaxKind.Constructor ? getTypeOfSymbolValueSide(getSymbolOfNode(func)) : errorType),
                         createSyntheticExpression(expr, anyType),
                         createSyntheticExpression(expr, numberType)
                     ];
@@ -22488,7 +22505,7 @@ namespace ts {
             }
 
             const declaringClassDeclaration = getClassLikeDeclarationOfSymbol(declaration.parent.symbol)!;
-            const declaringClass = <InterfaceType>getDeclaredTypeOfSymbol(declaration.parent.symbol);
+            const declaringClass = <InterfaceType>getTypeOfSymbolTypeSide(declaration.parent.symbol);
 
             // A private or protected constructor can only be instantiated within its own class (or a subclass, for protected)
             if (!isNodeWithinClass(node, declaringClassDeclaration)) {
@@ -22611,7 +22628,7 @@ namespace ts {
             // Create a diagnostic on the originating import if possible onto which we can attach a quickfix
             //  An import call expression cannot be rewritten into another form to correct the error - the only solution is to use `.default` at the use-site
             if (importNode && !isImportCall(importNode)) {
-                const sigs = getSignaturesOfType(getTypeOfSymbol(getSymbolLinks(apparentType.symbol).target!), kind);
+                const sigs = getSignaturesOfType(getTypeOfSymbolValueSide(getSymbolLinks(apparentType.symbol).target!), kind);
                 if (!sigs || !sigs.length) return;
 
                 addRelatedInfo(diagnostic,
@@ -22725,7 +22742,7 @@ namespace ts {
                 /*typeParameters*/ undefined,
                 /*thisParameter*/ undefined,
                 [parameterSymbol],
-                typeSymbol ? getDeclaredTypeOfSymbol(typeSymbol) : errorType,
+                typeSymbol ? getTypeOfSymbolTypeSide(typeSymbol) : errorType,
                 /*returnTypePredicate*/ undefined,
                 1,
                 /*hasRestparameter*/ false,
@@ -22913,6 +22930,7 @@ namespace ts {
                 return voidType;
             }
 
+            // I can't remember how the normal case works for NewExpression
             if (node.kind === SyntaxKind.NewExpression) {
                 const declaration = signature.declaration;
 
@@ -22944,6 +22962,7 @@ namespace ts {
             }
             let jsAssignmentType: Type | undefined;
             if (isInJSFile(node)) {
+                // TODO: resolveNewExpression's children will need to support expando entries
                 const decl = getDeclarationOfExpando(node);
                 if (decl) {
                     const jsSymbol = getSymbolOfNode(decl);
@@ -22998,7 +23017,7 @@ namespace ts {
             if (moduleSymbol) {
                 const esModuleSymbol = resolveESModuleSymbol(moduleSymbol, specifier, /*dontRecursivelyResolve*/ true);
                 if (esModuleSymbol) {
-                    return createPromiseReturnType(node, getTypeWithSyntheticDefaultImportType(getTypeOfSymbol(esModuleSymbol), esModuleSymbol, moduleSymbol));
+                    return createPromiseReturnType(node, getTypeWithSyntheticDefaultImportType(getTypeOfSymbolValueSide(esModuleSymbol), esModuleSymbol, moduleSymbol));
                 }
             }
             return createPromiseReturnType(node, anyType);
@@ -23150,11 +23169,11 @@ namespace ts {
             }
             else if (container.kind === SyntaxKind.Constructor) {
                 const symbol = getSymbolOfNode(container.parent as ClassLikeDeclaration);
-                return getTypeOfSymbol(symbol);
+                return getTypeOfSymbolValueSide(symbol);
             }
             else {
                 const symbol = getSymbolOfNode(container)!;
-                return getTypeOfSymbol(symbol);
+                return getTypeOfSymbolValueSide(symbol);
             }
         }
 
@@ -23169,7 +23188,7 @@ namespace ts {
         }
 
         function getTypeOfParameter(symbol: Symbol) {
-            const type = getTypeOfSymbol(symbol);
+            const type = getTypeOfSymbolValueSide(symbol);
             if (strictNullChecks) {
                 const declaration = symbol.valueDeclaration;
                 if (declaration && hasInitializer(declaration)) {
@@ -23185,7 +23204,7 @@ namespace ts {
                 return signature.parameters[pos].escapedName;
             }
             const restParameter = signature.parameters[paramCount] || unknownSymbol;
-            const restType = getTypeOfSymbol(restParameter);
+            const restType = getTypeOfSymbolValueSide(restParameter);
             if (isTupleType(restType)) {
                 const associatedNames = (<TupleType>(<TypeReference>restType).target).associatedNames;
                 const index = pos - paramCount;
@@ -23207,7 +23226,7 @@ namespace ts {
                 // We want to return the value undefined for an out of bounds parameter position,
                 // so we need to check bounds here before calling getIndexedAccessType (which
                 // otherwise would return the type 'undefined').
-                const restType = getTypeOfSymbol(signature.parameters[paramCount]);
+                const restType = getTypeOfSymbolValueSide(signature.parameters[paramCount]);
                 const index = pos - paramCount;
                 if (!isTupleType(restType) || restType.target.hasRestElement || index < (restType.typeArguments || emptyArray).length) {
                     return getIndexedAccessType(restType, getLiteralType(index));
@@ -23241,7 +23260,7 @@ namespace ts {
         function getParameterCount(signature: Signature) {
             const length = signature.parameters.length;
             if (signature.hasRestParameter) {
-                const restType = getTypeOfSymbol(signature.parameters[length - 1]);
+                const restType = getTypeOfSymbolValueSide(signature.parameters[length - 1]);
                 if (isTupleType(restType)) {
                     return length + (restType.typeArguments || emptyArray).length - 1;
                 }
@@ -23251,7 +23270,7 @@ namespace ts {
 
         function getMinArgumentCount(signature: Signature) {
             if (signature.hasRestParameter) {
-                const restType = getTypeOfSymbol(signature.parameters[signature.parameters.length - 1]);
+                const restType = getTypeOfSymbolValueSide(signature.parameters[signature.parameters.length - 1]);
                 if (isTupleType(restType)) {
                     const minLength = restType.target.minLength;
                     if (minLength > 0) {
@@ -23264,7 +23283,7 @@ namespace ts {
 
         function hasEffectiveRestParameter(signature: Signature) {
             if (signature.hasRestParameter) {
-                const restType = getTypeOfSymbol(signature.parameters[signature.parameters.length - 1]);
+                const restType = getTypeOfSymbolValueSide(signature.parameters[signature.parameters.length - 1]);
                 return !isTupleType(restType) || restType.target.hasRestElement;
             }
             return false;
@@ -23272,7 +23291,7 @@ namespace ts {
 
         function getEffectiveRestType(signature: Signature) {
             if (signature.hasRestParameter) {
-                const restType = getTypeOfSymbol(signature.parameters[signature.parameters.length - 1]);
+                const restType = getTypeOfSymbolValueSide(signature.parameters[signature.parameters.length - 1]);
                 return isTupleType(restType) ? getRestArrayTypeOfTupleType(restType) : restType;
             }
             return undefined;
@@ -23323,7 +23342,7 @@ namespace ts {
                     if (!parameter) {
                         signature.thisParameter = createSymbolWithType(context.thisParameter, /*type*/ undefined);
                     }
-                    assignTypeToParameterAndFixTypeParameters(signature.thisParameter!, getTypeOfSymbol(context.thisParameter));
+                    assignTypeToParameterAndFixTypeParameters(signature.thisParameter!, getTypeOfSymbolValueSide(context.thisParameter));
                 }
             }
             const len = signature.parameters.length - (signature.hasRestParameter ? 1 : 0);
@@ -23791,7 +23810,7 @@ namespace ts {
                 checkGrammarForGenerator(node);
             }
 
-            const type = getTypeOfSymbol(getMergedSymbol(node.symbol));
+            const type = getTypeOfSymbolValueSide(getMergedSymbol(node.symbol));
             if (isTypeAny(type)) {
                 return type;
             }
@@ -23812,7 +23831,7 @@ namespace ts {
                 if (!(links.flags & NodeCheckFlags.ContextChecked)) {
                     links.flags |= NodeCheckFlags.ContextChecked;
                     if (contextualSignature) {
-                        const type = getTypeOfSymbol(getMergedSymbol(node.symbol));
+                        const type = getTypeOfSymbolValueSide(getMergedSymbol(node.symbol));
                         if (isTypeAny(type)) {
                             return;
                         }
@@ -23910,7 +23929,7 @@ namespace ts {
             const valueType = getTypeOfPropertyOfType(objectLitType, "value" as __String);
             if (valueType) {
                 const writableProp = getPropertyOfType(objectLitType, "writable" as __String);
-                const writableType = writableProp && getTypeOfSymbol(writableProp);
+                const writableType = writableProp && getTypeOfSymbolValueSide(writableProp);
                 if (!writableType || writableType === falseType || writableType === regularFalseType) {
                     return true;
                 }
@@ -24649,7 +24668,7 @@ namespace ts {
             function checkAssignmentDeclaration(kind: AssignmentDeclarationKind, rightType: Type) {
                 if (kind === AssignmentDeclarationKind.ModuleExports) {
                     for (const prop of getPropertiesOfObjectType(rightType)) {
-                        const propType = getTypeOfSymbol(prop);
+                        const propType = getTypeOfSymbolValueSide(prop);
                         if (propType.symbol && propType.symbol.flags & SymbolFlags.Class) {
                             const name = prop.escapedName;
                             const symbol = resolveName(prop.valueDeclaration, name, SymbolFlags.Type, undefined, name, /*isUse*/ false);
@@ -25378,7 +25397,7 @@ namespace ts {
 
             checkSourceElement(node.constraint);
             checkSourceElement(node.default);
-            const typeParameter = getDeclaredTypeOfTypeParameter(getSymbolOfNode(node));
+            const typeParameter = getTypeOfTypeParameter(getSymbolOfNode(node));
             // Resolve base constraint to reveal circularity errors
             getBaseConstraintOfType(typeParameter);
             if (!hasNonCircularTypeParameterDefault(typeParameter)) {
@@ -25425,7 +25444,7 @@ namespace ts {
 
             // Only check rest parameter type if it's not a binding pattern. Since binding patterns are
             // not allowed in a rest parameter, we already have an error from checkGrammarParameterList.
-            if (node.dotDotDotToken && !isBindingPattern(node.name) && !isTypeAssignableTo(getTypeOfSymbol(node.symbol), anyReadonlyArrayType)) {
+            if (node.dotDotDotToken && !isBindingPattern(node.name) && !isTypeAssignableTo(getTypeOfSymbolValueSide(node.symbol), anyReadonlyArrayType)) {
                 error(node, Diagnostics.A_rest_parameter_must_be_of_an_array_type);
             }
         }
@@ -25458,7 +25477,7 @@ namespace ts {
                     else {
                         const leadingError = () => chainDiagnosticMessages(/*details*/ undefined, Diagnostics.A_type_predicate_s_type_must_be_assignable_to_its_parameter_s_type);
                         checkTypeAssignableTo(typePredicate.type,
-                            getTypeOfSymbol(signature.parameters[typePredicate.parameterIndex]),
+                            getTypeOfSymbolValueSide(signature.parameters[typePredicate.parameterIndex]),
                             node.type,
                             /*headMessage*/ undefined,
                             leadingError);
@@ -26719,7 +26738,7 @@ namespace ts {
                 }
 
                 const promiseConstructorSymbol = resolveEntityName(promiseConstructorName, SymbolFlags.Value, /*ignoreErrors*/ true);
-                const promiseConstructorType = promiseConstructorSymbol ? getTypeOfSymbol(promiseConstructorSymbol) : errorType;
+                const promiseConstructorType = promiseConstructorSymbol ? getTypeOfSymbolValueSide(promiseConstructorSymbol) : errorType;
                 if (promiseConstructorType === errorType) {
                     if (promiseConstructorName.kind === SyntaxKind.Identifier && promiseConstructorName.escapedText === "Promise" && getTargetType(returnType) === getGlobalPromiseType(/*reportErrors*/ false)) {
                         error(returnTypeNode, Diagnostics.An_async_function_or_method_in_ES5_SlashES3_requires_the_Promise_constructor_Make_sure_you_have_a_declaration_for_the_Promise_constructor_or_include_ES2015_in_your_lib_option);
@@ -26770,7 +26789,7 @@ namespace ts {
             switch (node.parent.kind) {
                 case SyntaxKind.ClassDeclaration:
                     const classSymbol = getSymbolOfNode(node.parent);
-                    const classConstructorType = getTypeOfSymbol(classSymbol);
+                    const classConstructorType = getTypeOfSymbolValueSide(classSymbol);
                     expectedReturnType = getUnionType([classConstructorType, voidType]);
                     break;
 
@@ -27741,7 +27760,7 @@ namespace ts {
                 return;
             }
             const symbol = getSymbolOfNode(node);
-            const type = convertAutoToAny(getTypeOfSymbol(symbol));
+            const type = convertAutoToAny(getTypeOfSymbolValueSide(symbol));
             if (node === symbol.valueDeclaration) {
                 // Node is the primary declaration of the symbol, just validate the initializer
                 // Don't validate for-in initializer as it is already an error
@@ -28428,7 +28447,7 @@ namespace ts {
          */
         function getIterationTypesOfIterableSlow(type: Type, resolver: IterationTypesResolver, errorNode: Node | undefined) {
             const method = getPropertyOfType(type, getPropertyNameForKnownSymbolName(resolver.iteratorSymbolName));
-            const methodType = method && !(method.flags & SymbolFlags.Optional) ? getTypeOfSymbol(method) : undefined;
+            const methodType = method && !(method.flags & SymbolFlags.Optional) ? getTypeOfSymbolValueSide(method) : undefined;
             if (isTypeAny(methodType)) {
                 return (type as IterableOrIteratorType)[resolver.iterableCacheKey] = anyIterationTypes;
             }
@@ -28595,7 +28614,7 @@ namespace ts {
             }
 
             const methodType = method && !(methodName === "next" && (method.flags & SymbolFlags.Optional))
-                ? methodName === "next" ? getTypeOfSymbol(method) : getTypeWithFacts(getTypeOfSymbol(method), TypeFacts.NEUndefinedOrNull)
+                ? methodName === "next" ? getTypeOfSymbolValueSide(method) : getTypeWithFacts(getTypeOfSymbolValueSide(method), TypeFacts.NEUndefinedOrNull)
                 : undefined;
 
             if (isTypeAny(methodType)) {
@@ -28913,7 +28932,7 @@ namespace ts {
 
             if (stringIndexType || numberIndexType) {
                 forEach(getPropertiesOfObjectType(type), prop => {
-                    const propType = getTypeOfSymbol(prop);
+                    const propType = getTypeOfSymbolValueSide(prop);
                     checkIndexConstraintForProperty(prop, propType, type, declaredStringIndexer, stringIndexType, IndexKind.String);
                     checkIndexConstraintForProperty(prop, propType, type, declaredNumberIndexer, numberIndexType, IndexKind.Number);
                 });
@@ -28926,7 +28945,7 @@ namespace ts {
                         // and properties with literal names were already checked.
                         if (!hasModifier(member, ModifierFlags.Static) && hasNonBindableDynamicName(member)) {
                             const symbol = getSymbolOfNode(member);
-                            const propType = getTypeOfSymbol(symbol);
+                            const propType = getTypeOfSymbolValueSide(symbol);
                             checkIndexConstraintForProperty(symbol, propType, type, declaredStringIndexer, stringIndexType, IndexKind.String);
                             checkIndexConstraintForProperty(symbol, propType, type, declaredNumberIndexer, numberIndexType, IndexKind.Number);
                         }
@@ -29087,7 +29106,7 @@ namespace ts {
                     return;
                 }
 
-                const type = <InterfaceType>getDeclaredTypeOfSymbol(symbol);
+                const type = <InterfaceType>getTypeOfSymbolTypeSide(symbol);
                 if (!areTypeParametersIdentical(declarations, type.localTypeParameters!)) {
                     // Report an error on every conflicting declaration.
                     const name = symbolToString(symbol);
@@ -29148,7 +29167,7 @@ namespace ts {
         function checkClassExpression(node: ClassExpression): Type {
             checkClassLikeDeclaration(node);
             checkNodeDeferred(node);
-            return getTypeOfSymbol(getSymbolOfNode(node));
+            return getTypeOfSymbolValueSide(getSymbolOfNode(node));
         }
 
         function checkClassExpressionDeferred(node: ClassExpression) {
@@ -29180,9 +29199,9 @@ namespace ts {
             checkTypeParameters(getEffectiveTypeParameterDeclarations(node));
             checkExportsOnMergedDeclarations(node);
             const symbol = getSymbolOfNode(node);
-            const type = <InterfaceType>getDeclaredTypeOfSymbol(symbol);
+            const type = <InterfaceType>getTypeOfSymbolTypeSide(symbol);
             const typeWithThis = getTypeWithThisArgument(type);
-            const staticType = <ObjectType>getTypeOfSymbol(symbol);
+            const staticType = <ObjectType>getTypeOfSymbolValueSide(symbol);
             checkTypeParameterListsIdentical(symbol);
             checkClassForDuplicateDeclarations(node);
 
@@ -29298,7 +29317,7 @@ namespace ts {
                             typeToString(typeWithThis),
                             typeToString(baseWithThis)
                         );
-                        if (!checkTypeAssignableTo(getTypeOfSymbol(prop), getTypeOfSymbol(baseProp), member.name || member, /*message*/ undefined, rootChain)) {
+                        if (!checkTypeAssignableTo(getTypeOfSymbolValueSide(prop), getTypeOfSymbolValueSide(baseProp), member.name || member, /*message*/ undefined, rootChain)) {
                             issuedMemberError = true;
                         }
                     }
@@ -29440,7 +29459,7 @@ namespace ts {
 
             interface InheritanceInfoMap { prop: Symbol; containingType: Type; }
             const seen = createUnderscoreEscapedMap<InheritanceInfoMap>();
-            forEach(resolveDeclaredMembers(type).declaredProperties, p => { seen.set(p.escapedName, { prop: p, containingType: type }); });
+            forEach(resolveDeclaredMembers(type).typeSideProperties, p => { seen.set(p.escapedName, { prop: p, containingType: type }); });
             let ok = true;
 
             for (const base of baseTypes) {
@@ -29478,7 +29497,7 @@ namespace ts {
                 if (isInstancePropertyWithoutInitializer(member)) {
                     const propName = (<PropertyDeclaration>member).name;
                     if (isIdentifier(propName)) {
-                        const type = getTypeOfSymbol(getSymbolOfNode(member));
+                        const type = getTypeOfSymbolValueSide(getSymbolOfNode(member));
                         if (!(type.flags & TypeFlags.AnyOrUnknown || getFalsyFlags(type) & TypeFlags.Undefined)) {
                             if (!constructor || !isPropertyInitializedInConstructor(propName, type, constructor)) {
                                 error(member.name, Diagnostics.Property_0_has_no_initializer_and_is_not_definitely_assigned_in_the_constructor, declarationNameToString(propName));
@@ -29520,7 +29539,7 @@ namespace ts {
                 // Only check this symbol once
                 const firstInterfaceDecl = getDeclarationOfKind<InterfaceDeclaration>(symbol, SyntaxKind.InterfaceDeclaration);
                 if (node === firstInterfaceDecl) {
-                    const type = <InterfaceType>getDeclaredTypeOfSymbol(symbol);
+                    const type = <InterfaceType>getTypeOfSymbolTypeSide(symbol);
                     const typeWithThis = getTypeWithThisArgument(type);
                     // run subsequent checks only if first set succeeded
                     if (checkInheritedPropertiesAreIdentical(type, node.name)) {
@@ -29623,7 +29642,7 @@ namespace ts {
             }
             else {
                 // Only here do we need to check that the initializer is assignable to the enum type.
-                checkTypeAssignableTo(checkExpression(initializer), getDeclaredTypeOfSymbol(getSymbolOfNode(member.parent)), initializer, /*headMessage*/ undefined);
+                checkTypeAssignableTo(checkExpression(initializer), getTypeOfSymbolTypeSide(getSymbolOfNode(member.parent)), initializer, /*headMessage*/ undefined);
             }
             return value;
 
@@ -31175,7 +31194,7 @@ namespace ts {
             }
 
             const classDecl = tryGetClassImplementingOrExtendingExpressionWithTypeArguments(node);
-            const classType = classDecl && getDeclaredTypeOfClassOrInterface(getSymbolOfNode(classDecl.class));
+            const classType = classDecl && getTypeOfClassOrInterfaceTypeSide(getSymbolOfNode(classDecl.class));
             if (isPartOfTypeNode(node)) {
                 const typeFromTypeNode = getTypeFromTypeNode(<TypeNode>node);
                 return classType ? getTypeWithThisArgument(typeFromTypeNode, classType.thisType) : typeFromTypeNode;
@@ -31195,23 +31214,23 @@ namespace ts {
             if (isTypeDeclaration(node)) {
                 // In this case, we call getSymbolOfNode instead of getSymbolAtLocation because it is a declaration
                 const symbol = getSymbolOfNode(node);
-                return getDeclaredTypeOfSymbol(symbol);
+                return getTypeOfSymbolTypeSide(symbol);
             }
 
             if (isTypeDeclarationName(node)) {
                 const symbol = getSymbolAtLocation(node);
-                return symbol ? getDeclaredTypeOfSymbol(symbol) : errorType;
+                return symbol ? getTypeOfSymbolTypeSide(symbol) : errorType;
             }
 
             if (isDeclaration(node)) {
                 // In this case, we call getSymbolOfNode instead of getSymbolAtLocation because it is a declaration
                 const symbol = getSymbolOfNode(node);
-                return getTypeOfSymbol(symbol);
+                return getTypeOfSymbolValueSide(symbol);
             }
 
             if (isDeclarationNameOrImportPropertyName(node)) {
                 const symbol = getSymbolAtLocation(node);
-                return symbol ? getTypeOfSymbol(symbol) : errorType;
+                return symbol ? getTypeOfSymbolValueSide(symbol) : errorType;
             }
 
             if (isBindingPattern(node)) {
@@ -31221,8 +31240,8 @@ namespace ts {
             if (isInRightSideOfImportOrExportAssignment(<Identifier>node)) {
                 const symbol = getSymbolAtLocation(node);
                 if (symbol) {
-                    const declaredType = getDeclaredTypeOfSymbol(symbol);
-                    return declaredType !== errorType ? declaredType : getTypeOfSymbol(symbol);
+                    const declaredType = getTypeOfSymbolTypeSide(symbol);
+                    return declaredType !== errorType ? declaredType : getTypeOfSymbolValueSide(symbol);
                 }
             }
 
@@ -31292,8 +31311,8 @@ namespace ts {
         function getParentTypeOfClassElement(node: ClassElement) {
             const classSymbol = getSymbolOfNode(node.parent)!;
             return hasModifier(node, ModifierFlags.Static)
-                ? getTypeOfSymbol(classSymbol)
-                : getDeclaredTypeOfSymbol(classSymbol);
+                ? getTypeOfSymbolValueSide(classSymbol)
+                : getTypeOfSymbolTypeSide(classSymbol);
         }
 
         function getClassElementPropertyKeyType(element: ClassElement) {
@@ -31659,7 +31678,7 @@ namespace ts {
                 return emptyArray;
             }
             const symbol = getSymbolOfNode(declaration);
-            return symbol && getPropertiesOfType(getTypeOfSymbol(symbol)) || emptyArray;
+            return symbol && getPropertiesOfType(getTypeOfSymbolValueSide(symbol)) || emptyArray;
         }
 
         function getNodeCheckFlags(node: Node): NodeCheckFlags {
@@ -31723,7 +31742,7 @@ namespace ts {
                     return TypeReferenceSerializationKind.Promise;
                 }
 
-                const constructorType = getTypeOfSymbol(valueSymbol);
+                const constructorType = getTypeOfSymbolValueSide(valueSymbol);
                 if (constructorType && isConstructorType(constructorType)) {
                     return TypeReferenceSerializationKind.TypeWithConstructSignatureAndValue;
                 }
@@ -31733,7 +31752,7 @@ namespace ts {
             if (!typeSymbol) {
                 return TypeReferenceSerializationKind.Unknown;
             }
-            const type = getDeclaredTypeOfSymbol(typeSymbol);
+            const type = getTypeOfSymbolTypeSide(typeSymbol);
             if (type === errorType) {
                 return TypeReferenceSerializationKind.Unknown;
             }
@@ -31780,7 +31799,7 @@ namespace ts {
             // Get type of the symbol if this is the valid symbol otherwise get type at location
             const symbol = getSymbolOfNode(declaration);
             let type = symbol && !(symbol.flags & (SymbolFlags.TypeLiteral | SymbolFlags.Signature))
-                ? getWidenedLiteralType(getTypeOfSymbol(symbol))
+                ? getWidenedLiteralType(getTypeOfSymbolValueSide(symbol))
                 : errorType;
             if (type.flags & TypeFlags.UniqueESSymbol &&
                 type.symbol === symbol) {
@@ -31849,7 +31868,7 @@ namespace ts {
 
         function isLiteralConstDeclaration(node: VariableDeclaration | PropertyDeclaration | PropertySignature | ParameterDeclaration): boolean {
             if (isDeclarationReadonly(node) || isVariableDeclaration(node) && isVarConst(node)) {
-                return isFreshLiteralType(getTypeOfSymbol(getSymbolOfNode(node)));
+                return isFreshLiteralType(getTypeOfSymbolValueSide(getSymbolOfNode(node)));
             }
             return false;
         }
@@ -31861,7 +31880,7 @@ namespace ts {
         }
 
         function createLiteralConstValue(node: VariableDeclaration | PropertyDeclaration | PropertySignature | ParameterDeclaration, tracker: SymbolTracker) {
-            const type = getTypeOfSymbol(getSymbolOfNode(node));
+            const type = getTypeOfSymbolValueSide(getSymbolOfNode(node));
             return literalTypeToNode(<FreshableType>type, node, tracker);
         }
 

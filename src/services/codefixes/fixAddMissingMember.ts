@@ -132,7 +132,7 @@ namespace ts.codefix {
         // Prefer to change the class instead of the interface if they are merged
         const classOrInterface = find(symbol.declarations, isClassLike) || find(symbol.declarations, isInterfaceDeclaration);
         if (classOrInterface && !program.isSourceFileFromExternalLibrary(classOrInterface.getSourceFile())) {
-            const makeStatic = ((leftExpressionType as TypeReference).target || leftExpressionType) !== checker.getDeclaredTypeOfSymbol(symbol);
+            const makeStatic = ((leftExpressionType as TypeReference).target || leftExpressionType) !== checker.getTypeOfSymbolTypeSide(symbol);
             const declSourceFile = classOrInterface.getSourceFile();
             const inJs = isSourceFileJS(declSourceFile);
             const call = tryCast(parent.parent, isCallExpression);

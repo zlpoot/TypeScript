@@ -3104,7 +3104,7 @@ namespace ts {
 
     export interface TypeChecker {
         getTypeOfSymbolAtLocation(symbol: Symbol, node: Node): Type;
-        getDeclaredTypeOfSymbol(symbol: Symbol): Type;
+        getTypeOfSymbolTypeSide(symbol: Symbol): Type;
         getPropertiesOfType(type: Type): Symbol[];
         getPropertyOfType(type: Type, propertyName: string): Symbol | undefined;
         /* @internal */ getTypeOfPropertyOfType(type: Type, propertyName: string): Type | undefined;
@@ -3734,9 +3734,9 @@ namespace ts {
     export interface SymbolLinks {
         immediateTarget?: Symbol;           // Immediate target of an alias. May be another alias. Do not access directly, use `checker.getImmediateAliasedSymbol` instead.
         target?: Symbol;                    // Resolved (non-alias) target of an alias
-        type?: Type;                        // Type of value symbol
+        type?: Type;                        // Type of value side of symbol (variable, parameter, property, object, namespace, etc)
+        typeType?: Type;                // Type of type side of symbol (class, interface, enum, type alias, or type parameter)
         uniqueESSymbolType?: Type;          // UniqueESSymbol type for a symbol
-        declaredType?: Type;                // Type of class, interface, enum, type alias, or type parameter
         resolvedJSDocType?: Type;           // Resolved type of a JSDoc type reference
         typeParameters?: TypeParameter[];   // Type parameters of type alias (undefined if non-generic)
         outerTypeParameters?: TypeParameter[];  // Outer type parameters of anonymous object type
@@ -4142,12 +4142,12 @@ namespace ts {
     // Object type or intersection of object types
     export type BaseType = ObjectType | IntersectionType;
 
-    export interface InterfaceTypeWithDeclaredMembers extends InterfaceType {
-        declaredProperties: Symbol[];                   // Declared members
-        declaredCallSignatures: Signature[];            // Declared call signatures
-        declaredConstructSignatures: Signature[];       // Declared construct signatures
-        declaredStringIndexInfo?: IndexInfo; // Declared string indexing info
-        declaredNumberIndexInfo?: IndexInfo; // Declared numeric indexing info
+    export interface InterfaceTypeWithTypeSideMembers extends InterfaceType {
+        typeSideProperties: Symbol[];                   // Members of type side of symbol
+        typeSideCallSignatures: Signature[];            // Call signatures of type side of symbol
+        typeSideConstructSignatures: Signature[];       // Construct signatures of type side of symbol
+        typeSideStringIndexInfo?: IndexInfo; // String index info of type side of symbol
+        typeSideNumberIndexInfo?: IndexInfo; // Numeric index info of type side of symbol
     }
 
     /**
