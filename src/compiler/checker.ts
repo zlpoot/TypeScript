@@ -7522,13 +7522,10 @@ namespace ts {
                 if (symbol.flags & SymbolFlags.Class) {
                     const instanceType = getTypeOfClassOrInterfaceTypeSide(symbol);
                     if (symbol.flags & SymbolFlags.Function) {
-                        // TODO: When ctor funcs are real classes, call signatures should return what the actual return is,
-                        // (so, use the normal code path in resolveReturnTypeOfSignature?)
-                        // and constructor sigs should return instanceType,
-                        // (might need a special property added for this in getSignatureFromDeclaration?)
-                        // for a prototype, we can just have the call signatures be incorrect
-                        // (presently call sigs do the wrong thing too, so not urgent to fix)
-                        type.constructSignatures = filter(type.callSignatures, sig => isJSConstructor(sig.declaration));
+                        // TODO: Instead of using instanceType, call getJSClassType, assuming it doesn't cause circularities (which it will)
+                        type.constructSignatures = mapDefined(type.callSignatures, sig => isJSConstructor(sig.declaration) ?
+                                                              createSignature(sig.declaration, sig.typeParameters, sig.thisParameter, sig.parameters, instanceType,
+                                                                              /*resolvedTypePredicate*/ undefined, sig.minArgumentCount, sig.hasRestParameter, sig.hasLiteralTypes) : undefined);
                     }
                     else {
                         let constructSignatures = getSignaturesOfSymbol(symbol.members!.get(InternalSymbolName.Constructor));
@@ -8767,7 +8764,6 @@ namespace ts {
                 let type = signature.target && instantiateType(getReturnTypeOfSignature(signature.target), signature.mapper!) ||
                     signature.unionSignatures && getUnionType(map(signature.unionSignatures, getReturnTypeOfSignature), UnionReduction.Subtype) ||
                     getReturnTypeFromAnnotation(signature.declaration!) ||
-                    isJSConstructor(signature.declaration) && getJSClassType(getSymbolOfNode(signature.declaration!)) ||
                     (nodeIsMissing((<FunctionLikeDeclaration>signature.declaration).body) ? anyType : getReturnTypeFromBody(<FunctionLikeDeclaration>signature.declaration));
                 if (!popTypeResolution()) {
                     if (signature.declaration) {
@@ -9268,8 +9264,8 @@ namespace ts {
                 isJSDocTypeReference(node) &&
                 isJSConstructor(symbol.valueDeclaration)) {
                 const resolved = resolveStructuredTypeMembers(<ObjectType>getTypeOfSymbolValueSide(symbol));
-                if (resolved.callSignatures.length === 1) {
-                    return getReturnTypeOfSignature(resolved.callSignatures[0]);
+                if (resolved.constructSignatures.length === 1) {
+                    return getReturnTypeOfSignature(resolved.constructSignatures[0]);
                 }
             }
         }
@@ -22876,7 +22872,8 @@ namespace ts {
         function getJSClassType(symbol: Symbol): Type | undefined {
             let inferred: Type | undefined;
             if (isJSConstructor(symbol.valueDeclaration)) {
-                inferred = getInferredClassType(symbol);
+                // This is surely all I need to do!
+                inferred = getTypeOfSymbolTypeSide(symbol); // getInferredClassType(symbol);
             }
             const assigned = getAssignedClassType(symbol);
             return assigned && inferred ?
