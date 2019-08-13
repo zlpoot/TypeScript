@@ -700,6 +700,43 @@ namespace ts {
         return isExternalModule(node) || compilerOptions.isolatedModules || ((getEmitModuleKind(compilerOptions) === ModuleKind.CommonJS) && !!node.commonJsModuleIndicator);
     }
 
+    /**
+     * Returns whether the source file will be treated as if it were in strict mode at runtime.
+     */
+    export function isEffectiveStrictModeSourceFile(node: SourceFile, compilerOptions: CompilerOptions) {
+        // We can only verify strict mode for JS/TS files
+        switch (node.scriptKind) {
+            case ScriptKind.JS:
+            case ScriptKind.TS:
+            case ScriptKind.JSX:
+            case ScriptKind.TSX:
+                break;
+            default:
+                return false;
+        }
+        // Strict mode does not matter for declaration files.
+        if (node.isDeclarationFile) {
+            return false;
+        }
+        // If `alwaysStrict` is set, then treat the file as strict.
+        if (getStrictOptionValue(compilerOptions, "alwaysStrict")) {
+            return true;
+        }
+        // Starting with a "use strict" directive indicates the file is strict.
+        if (startsWithUseStrict(node.statements)) {
+            return true;
+        }
+        if (isExternalModule(node) || compilerOptions.isolatedModules) {
+            // ECMAScript Modules are always strict.
+            if (getEmitModuleKind(compilerOptions) >= ModuleKind.ES2015) {
+                return true;
+            }
+            // Other modules are strict unless otherwise specified.
+            return !compilerOptions.noImplicitUseStrict;
+        }
+        return false;
+    }
+
     export function isBlockScope(node: Node, parentNode: Node): boolean {
         switch (node.kind) {
             case SyntaxKind.SourceFile:
@@ -985,6 +1022,12 @@ namespace ts {
 
     export function isImportCall(n: Node): n is ImportCall {
         return n.kind === SyntaxKind.CallExpression && (<CallExpression>n).expression.kind === SyntaxKind.ImportKeyword;
+    }
+
+    export function isImportMeta(n: Node): n is ImportMetaProperty {
+        return isMetaProperty(n)
+            && n.keywordToken === SyntaxKind.ImportKeyword
+            && n.name.escapedText === "meta";
     }
 
     export function isLiteralImportTypeNode(n: Node): n is LiteralImportTypeNode {
@@ -2640,6 +2683,10 @@ namespace ts {
         return isKeyword(token) && !isContextualKeyword(token);
     }
 
+    export function isFutureReservedKeyword(token: SyntaxKind): boolean {
+        return SyntaxKind.FirstFutureReservedWord <= token && token <= SyntaxKind.LastFutureReservedWord;
+    }
+
     export function isStringANonContextualKeyword(name: string) {
         const token = stringToToken(name);
         return token !== undefined && isNonContextualKeyword(token);
@@ -3519,7 +3566,7 @@ namespace ts {
         return find(node.members, (member): member is ConstructorDeclaration & { body: FunctionBody } => isConstructorDeclaration(member) && nodeIsPresent(member.body));
     }
 
-    function getSetAccessorValueParameter(accessor: SetAccessorDeclaration): ParameterDeclaration | undefined {
+    export function getSetAccessorValueParameter(accessor: SetAccessorDeclaration): ParameterDeclaration | undefined {
         if (accessor && accessor.parameters.length > 0) {
             const hasThis = accessor.parameters.length === 2 && parameterIsThisKeyword(accessor.parameters[0]);
             return accessor.parameters[hasThis ? 1 : 0];
@@ -3554,7 +3601,7 @@ namespace ts {
         return id.originalKeywordKind === SyntaxKind.ThisKeyword;
     }
 
-    export function getAllAccessorDeclarations(declarations: NodeArray<Declaration>, accessor: AccessorDeclaration): AllAccessorDeclarations {
+    export function getAllAccessorDeclarations(declarations: readonly Declaration[], accessor: AccessorDeclaration): AllAccessorDeclarations {
         // TODO: GH#18217
         let firstAccessor!: AccessorDeclaration;
         let secondAccessor!: AccessorDeclaration;
