@@ -262,7 +262,7 @@ interface Symbol {
     ) {
         let expectedBuildInfoFiles: BuildInfoSectionBaselineFiles[] | undefined;
         for (const { options } of configs) {
-            const out = options.outFile || options.out;
+            const out = outFile(options);
             if (out) {
                 const { jsFilePath, declarationFilePath, buildInfoPath } = getOutputPathsForBundle(options, /*forceDts*/ false);
                 if (buildInfoPath && writtenFiles.has(buildInfoPath)) {

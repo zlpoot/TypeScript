@@ -3650,6 +3650,10 @@ namespace ts {
         buildInfoPath?: string | undefined;
     }
 
+    export function outFile(options: CompilerOptions) {
+        return options.outFile || options.out;
+    }
+
     /**
      * Gets the source files that are expected to have an emit output.
      *
@@ -3663,7 +3667,7 @@ namespace ts {
         const options = host.getCompilerOptions();
         const isSourceFileFromExternalLibrary = (file: SourceFile) => host.isSourceFileFromExternalLibrary(file);
         const getResolvedProjectReferenceToRedirect = (fileName: string) => host.getResolvedProjectReferenceToRedirect(fileName);
-        if (options.outFile || options.out) {
+        if (outFile(options)) {
             const moduleKind = getEmitModuleKind(options);
             const moduleEmitEnabled = options.emitDeclarationOnly || moduleKind === ModuleKind.AMD || moduleKind === ModuleKind.System;
             // Can emit only sources that are not declaration file and are either non module code or module with --module or --target es6 specified

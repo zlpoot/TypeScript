@@ -920,7 +920,7 @@ namespace Harness {
                 assert(sourceFile, "Program has no source file with name '" + fileName + "'");
                 // Is this file going to be emitted separately
                 let sourceFileName: string;
-                const outFile = options.outFile || options.out;
+                const outFile = ts.outFile(options);
                 if (!outFile) {
                     if (options.outDir) {
                         let sourceFilePath = ts.getNormalizedAbsolutePath(sourceFile.fileName, result.vfs.cwd());

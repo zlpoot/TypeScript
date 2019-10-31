@@ -420,7 +420,7 @@ namespace ts.BuilderState {
     export function getAllDependencies(state: BuilderState, programOfThisState: Program, sourceFile: SourceFile): readonly string[] {
         const compilerOptions = programOfThisState.getCompilerOptions();
         // With --out or --outFile all outputs go into single file, all files depend on each other
-        if (compilerOptions.outFile || compilerOptions.out) {
+        if (outFile(compilerOptions)) {
             return getAllFileNames(state, programOfThisState);
         }
 
@@ -536,7 +536,7 @@ namespace ts.BuilderState {
         const compilerOptions = programOfThisState.getCompilerOptions();
         // If `--out` or `--outFile` is specified, any new emit will result in re-emitting the entire project,
         // so returning the file itself is good enough.
-        if (compilerOptions && (compilerOptions.out || compilerOptions.outFile)) {
+        if (compilerOptions && outFile(compilerOptions)) {
             return [sourceFileWithUpdatedShape];
         }
         return getAllFilesExcludingDefaultLibraryFile(state, programOfThisState, sourceFileWithUpdatedShape);
@@ -551,7 +551,7 @@ namespace ts.BuilderState {
         }
 
         const compilerOptions = programOfThisState.getCompilerOptions();
-        if (compilerOptions && (compilerOptions.isolatedModules || compilerOptions.out || compilerOptions.outFile)) {
+        if (compilerOptions && (compilerOptions.isolatedModules || outFile(compilerOptions))) {
             return [sourceFileWithUpdatedShape];
         }
 

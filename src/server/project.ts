@@ -1010,7 +1010,7 @@ namespace ts.server {
                 );
 
                 if (this.generatedFilesMap) {
-                    const outPath = this.compilerOptions.outFile && this.compilerOptions.out;
+                    const outPath = outFile(this.compilerOptions);
                     if (isGeneratedFileWatcher(this.generatedFilesMap)) {
                         // --out
                         if (!outPath || !this.isValidGeneratedFileWatcher(
@@ -1182,7 +1182,7 @@ namespace ts.server {
 
         /* @internal */
         addGeneratedFileWatch(generatedFile: string, sourceFile: string) {
-            if (this.compilerOptions.outFile || this.compilerOptions.out) {
+            if (outFile(this.compilerOptions)) {
                 // Single watcher
                 if (!this.generatedFilesMap) {
                     this.generatedFilesMap = this.createGeneratedFileWatcher(generatedFile);
@@ -1784,7 +1784,7 @@ namespace ts.server {
                 this.mapOfDeclarationDirectories = createMap();
                 this.projectReferenceCallbacks.forEachResolvedProjectReference(ref => {
                     if (!ref) return;
-                    const out = ref.commandLine.options.outFile || ref.commandLine.options.out;
+                    const out = outFile(ref.commandLine.options);
                     if (out) {
                         this.mapOfDeclarationDirectories!.set(getDirectoryPath(this.toPath(out)), true);
                     }

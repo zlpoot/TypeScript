@@ -84,8 +84,8 @@ namespace compiler {
             // correlate inputs and outputs
             this._inputsAndOutputs = new collections.SortedMap<string, CompilationOutput>({ comparer: this.vfs.stringComparer, sort: "insertion" });
             if (program) {
-                if (this.options.out || this.options.outFile) {
-                    const outFile = vpath.resolve(this.vfs.cwd(), this.options.outFile || this.options.out);
+                if (ts.outFile(this.options)) {
+                    const outFile = vpath.resolve(this.vfs.cwd(), ts.outFile(this.options));
                     const inputs: documents.TextDocument[] = [];
                     for (const sourceFile of program.getSourceFiles()) {
                         if (sourceFile) {
@@ -160,7 +160,7 @@ namespace compiler {
         }
 
         public get singleFile(): boolean {
-            return !!this.options.outFile || !!this.options.out;
+            return !!ts.outFile(this.options);
         }
 
         public get commonSourceDirectory(): string {
@@ -202,8 +202,8 @@ namespace compiler {
         }
 
         public getOutputPath(path: string, ext: string): string {
-            if (this.options.outFile || this.options.out) {
-                path = vpath.resolve(this.vfs.cwd(), this.options.outFile || this.options.out);
+            if (ts.outFile(this.options)) {
+                path = vpath.resolve(this.vfs.cwd(), ts.outFile(this.options));
             }
             else {
                 path = vpath.resolve(this.vfs.cwd(), path);

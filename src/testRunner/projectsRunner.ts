@@ -352,7 +352,7 @@ namespace project {
                     }
                     rootFiles.unshift(sourceFile.fileName);
                 }
-                else if (!(compilerOptions.outFile || compilerOptions.out)) {
+                else if (!ts.outFile(compilerOptions)) {
                     let emitOutputFilePathWithoutExtension: string | undefined;
                     if (compilerOptions.outDir) {
                         let sourceFilePath = ts.getNormalizedAbsolutePath(sourceFile.fileName, compilerResult.program!.getCurrentDirectory());
@@ -371,7 +371,7 @@ namespace project {
                     }
                 }
                 else {
-                    const outputDtsFileName = ts.removeFileExtension(compilerOptions.outFile || compilerOptions.out!) + ts.Extension.Dts;
+                    const outputDtsFileName = ts.removeFileExtension(ts.outFile(compilerOptions)!) + ts.Extension.Dts;
                     const outputDtsFile = findOutputDtsFile(outputDtsFileName)!;
                     if (!ts.contains(allInputFiles, outputDtsFile)) {
                         allInputFiles.unshift(outputDtsFile);

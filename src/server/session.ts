@@ -1655,7 +1655,7 @@ namespace ts.server {
                     return {
                         projectFileName: project.getProjectName(),
                         fileNames: project.getCompileOnSaveAffectedFileList(info),
-                        projectUsesOutFile: !!compilationSettings.outFile || !!compilationSettings.out
+                        projectUsesOutFile: !!outFile(compilationSettings)
                     };
                 }
             );

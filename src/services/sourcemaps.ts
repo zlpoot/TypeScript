@@ -75,9 +75,7 @@ namespace ts {
                 return undefined;
             }
 
-            const options = program.getCompilerOptions();
-            const outPath = options.outFile || options.out;
-
+            const outPath = outFile(program.getCompilerOptions());
             const declarationPath = outPath ?
                 removeFileExtension(outPath) + Extension.Dts :
                 getDeclarationEmitOutputFilePathWorker(info.fileName, program.getCompilerOptions(), currentDirectory, program.getCommonSourceDirectory(), getCanonicalFileName);
