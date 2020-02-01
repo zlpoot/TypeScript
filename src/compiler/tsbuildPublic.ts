@@ -230,7 +230,7 @@ namespace ts {
         readonly currentDirectory: string;
         readonly getCanonicalFileName: GetCanonicalFileName;
         readonly parseConfigFileHost: ParseConfigFileHost;
-        readonly writeFileName: ((s: string) => void) | undefined;
+        readonly write: ((s: string) => void) | undefined;
 
         // State of solution
         readonly options: BuildOptions;
@@ -305,7 +305,7 @@ namespace ts {
             currentDirectory,
             getCanonicalFileName,
             parseConfigFileHost: parseConfigHostFromCompilerHostLike(host),
-            writeFileName: host.trace ? (s: string) => host.trace!(s) : undefined,
+            write: maybeBind(host, host.trace),
 
             // State of solution
             options,
@@ -903,7 +903,7 @@ namespace ts {
             const { emitResult } = emitFilesAndReportErrors(
                 program,
                 reportDeclarationDiagnostics,
-                /*writeFileName*/ undefined,
+                /*write*/ undefined,
                 /*reportSummary*/ undefined,
                 (name, text, writeByteOrderMark) => outputFiles.push({ name, text, writeByteOrderMark }),
                 cancellationToken,
@@ -990,9 +990,9 @@ namespace ts {
                 return emitDiagnostics;
             }
 
-            if (state.writeFileName) {
+            if (state.write) {
                 emittedOutputs.forEach(name => listEmittedFile(state, config, name));
-                if (program) listFiles(program, state.writeFileName);
+                if (program) listFiles(program, state.write);
             }
 
             // Update time stamps for rest of the outputs
@@ -1233,9 +1233,9 @@ namespace ts {
         return undefined;
     }
 
-    function listEmittedFile({ writeFileName }: SolutionBuilderState, proj: ParsedCommandLine, file: string) {
-        if (writeFileName && proj.options.listEmittedFiles) {
-            writeFileName(`TSFILE: ${file}`);
+    function listEmittedFile({ write }: SolutionBuilderState, proj: ParsedCommandLine, file: string) {
+        if (write && proj.options.listEmittedFiles) {
+            write(`TSFILE: ${file}`);
         }
     }
 
@@ -1277,7 +1277,7 @@ namespace ts {
     ) {
         reportAndStoreErrors(state, resolvedPath, diagnostics);
         // List files if any other build error using program (emit errors already report files)
-        if (program && state.writeFileName) listFiles(program, state.writeFileName);
+        if (program && state.write) listFiles(program, state.write);
         state.projectStatus.set(resolvedPath, { type: UpToDateStatusType.Unbuildable, reason: `${errorType} errors` });
         afterProgramDone(state, resolvedPath, program, config);
         state.projectCompilerOptions = state.baseCompilerOptions;
