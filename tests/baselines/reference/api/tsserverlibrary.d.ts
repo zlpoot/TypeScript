@@ -2827,10 +2827,6 @@ declare namespace ts {
         None = 0,
         Recursive = 1
     }
-    export interface ExpandResult {
-        fileNames: string[];
-        wildcardDirectories: MapLike<WatchDirectoryFlags>;
-    }
     export interface CreateProgramOptions {
         rootNames: readonly string[];
         options: CompilerOptions;

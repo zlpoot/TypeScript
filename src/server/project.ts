@@ -1759,9 +1759,6 @@ namespace ts.server {
         openFileWatchTriggered = createMap<true>();
 
         /*@internal*/
-        configFileSpecs: ConfigFileSpecs | undefined;
-
-        /*@internal*/
         canConfigFileJsonReportNoInputFiles = false;
 
         /** Ref count to the project when opened from external project */
@@ -1989,7 +1986,6 @@ namespace ts.server {
 
             this.stopWatchingWildCards();
             this.projectErrors = undefined;
-            this.configFileSpecs = undefined;
             this.openFileWatchTriggered.clear();
             this.compilerHost = undefined;
             super.close();
@@ -2067,8 +2063,8 @@ namespace ts.server {
         }
 
         /*@internal*/
-        updateErrorOnNoInputFiles(fileNameResult: ExpandResult) {
-            updateErrorForNoInputFiles(fileNameResult, this.getConfigFilePath(), this.configFileSpecs!, this.projectErrors!, this.canConfigFileJsonReportNoInputFiles);
+        updateErrorOnNoInputFiles(fileNames: string[]) {
+            updateErrorForNoInputFiles(fileNames, this.getConfigFilePath(), this.getCompilerOptions().configFile!.configFileSpecs!, this.projectErrors!, this.canConfigFileJsonReportNoInputFiles);
         }
     }
 
