@@ -144,7 +144,7 @@ namespace ts {
         }
     }
 
-    function explainFiles(program: ProgramToEmitFilesAndReportErrors, write: (s: string) => void) {
+    export function explainFiles(program: ProgramToEmitFilesAndReportErrors, write: (s: string) => void) {
         const reasons = program.getFileIncludeReasons();
         const filesByOrder = createMap<SourceFile[]>();
         for (const file of program.getSourceFiles()) {
@@ -157,12 +157,13 @@ namespace ts {
                 filesByOrder.set(order, [file]);
             }
         }
+
+        
         for (let order = FileIncludeKind.RootFile; order <= FileIncludeKind.AutomaticTypeDirectiveFile; order++) {
             const files = filesByOrder.get(order.toString());
             if (!files) continue;
             write(`${FileIncludeKind[order]}s::`);
             for (const file of files) {
-
                 write(`${toFileName(program, file)}${file.redirectInfo ? " -> " + toFileName(program, file.redirectInfo.redirectTarget) : ""}`);
                 for (const reason of reasons.get(file.path)!) {
                     if (reason.kind !== order ||
@@ -171,11 +172,81 @@ namespace ts {
                         // Add information about the reason
                         write(explainFileIncludeReason(program, reason));
                     }
+                    //else if (reason.kind === FileIncludeKind.RootFile) {
+                    //    //const include = getMatchingIncludeSpecFromConfigFilesSpecs(file, options.configFile.configFileSpecs);
+                    //    //return include ?
+                    //    //    `  ${FileIncludeKind[reason.kind]}:: Matched by include pattern '${include}' in tsconfig.json` :
+
+                    //    for (const reason of reasons.get(file.path)!) {
+                    //        if (reason.kind !== FileIncludeKind.RootFile) write(explainFileIncludeReason(program, reason));
+                    //    }
+                    //}
                 }
             }
             write("");
         }
     }
+
+    //function createRootFileExpainationWriter(program: ProgramToEmitFilesAndReportErrors, write: (s: string) => void): (file: SourceFile) => void {
+    //    const options = program.getCompilerOptions();
+    //    if (!options.configFile?.configFileSpecs) return noop;
+
+    //    const { filesSpecs, validatedIncludeSpecs } = options.configFile.configFileSpecs;
+    //    if (!validatedIncludeSpecs || !validatedIncludeSpecs.length) return writeMatchedByFiles;
+
+    //    const basePath = getDirectoryPath(getNormalizedAbsolutePath(options.configFile.fileName, program.getCurrentDirectory()));
+    //    let includeSpecs: { include: string; regExp: RegExp; }[] | undefined;
+    //    for (const include of validatedIncludeSpecs) {
+    //        const pattern = getPatternFromSpec(include, basePath, "files");
+    //        if (!pattern) continue;
+    //        (includeSpecs || (includeSpecs = [])).push({
+    //            include,
+    //            regExp: getRegexFromPattern(`(${pattern})$`, useCaseSensitiveFileNames)
+    //        });
+    //    }
+
+    //    return !includeSpecs ?
+    //        writeMatchedByFiles :
+    //        !length(filesSpecs) ?
+    //            writeMatchedByIncludeFile :
+    //            writeMatchedByFilesOrInclude;
+
+    //    function writeMatchedByFilesOrInclude(file: SourceFile) {
+    //               //if (includeRe) {
+    //    //    if (excludeRe) {
+    //    //        return path => !(includeRe.test(path) && !excludeRe.test(path));
+    //    //    }
+    //    //    return path => !includeRe.test(path);
+    //    //}
+    //    //if (excludeRe) {
+    //    //    return path => excludeRe.test(path);
+    //    //}
+    //    }
+
+
+    //    //path = normalizePath(path);
+    //    //currentDirectory = normalizePath(currentDirectory);
+    //    //const absolutePath = combinePaths(currentDirectory, path);
+
+    //    function writeMatchedByIncludeFile(file: SourceFile) {
+    //        for (const spec of includeSpecs!) {
+    //            if (spec.regExp.test(file.fileName)) {
+    //                return writeMatchedByInclude(spec.include);
+    //            }
+    //        }
+    //    }
+
+
+ 
+
+    //    function writeMatchedByInclude(include: string) {
+    //        write(`  ${FileIncludeKind[FileIncludeKind.RootFile]}:: Matched by include pattern '${include}' in tsconfig.json`);
+    //    }
+
+    //    function writeMatchedByFiles() {
+    //        write(`  ${FileIncludeKind[FileIncludeKind.RootFile]}:: Part of 'files' list in tsconfig.json`);
+    //    }
+    //}
 
     function toFileName(program: ProgramToEmitFilesAndReportErrors, file: SourceFile | string) {
         return convertToRelativePath(isString(file) ? file : file.fileName, program.getCurrentDirectory(), fileName => program.getCanonicalFileName(fileName));
