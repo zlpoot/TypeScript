@@ -137,6 +137,11 @@ namespace ts {
     type GetResolutionWithResolvedFileName<T extends ResolutionWithFailedLookupLocations = ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName = ResolutionWithResolvedFileName> =
         (resolution: T) => R | undefined;
 
+    interface ResolutionStatistics {
+        loaderInvoke: number;
+        uniqueResolutions: number;
+    }
+
     export function createResolutionCache(resolutionHost: ResolutionCacheHost, rootDirForResolution: string | undefined, logChangesWhenResolvingModule: boolean): ResolutionCache {
         let filesWithChangedSetOfUnresolvedImports: Path[] | undefined;
         let filesWithInvalidatedResolutions: Map<true> | undefined;
@@ -164,6 +169,9 @@ namespace ts {
 
         const resolvedTypeReferenceDirectives = createMap<Map<CachedResolvedTypeReferenceDirectiveWithFailedLookupLocations>>();
         const perDirectoryResolvedTypeReferenceDirectives: CacheWithRedirects<Map<CachedResolvedTypeReferenceDirectiveWithFailedLookupLocations>> = createCacheWithRedirects();
+
+        const moduleStatistics: ResolutionStatistics = { loaderInvoke: 0, uniqueResolutions: 0 };
+        const typeRefStatistics: ResolutionStatistics = { loaderInvoke: 0, uniqueResolutions: 0 };
 
         /**
          * These are the extensions that failed lookup files will have by default,
@@ -263,6 +271,13 @@ namespace ts {
                 isFileWithInvalidatedNonRelativeUnresolvedImports(path);
         }
 
+        function resolutionStatisticsClear(kind: string,  statistics: ResolutionStatistics) {
+            resolutionHost.writeLog(`ResolutionCache:: ${kind}:: Number of unique  resolutions: ${statistics.uniqueResolutions}`);
+            resolutionHost.writeLog(`ResolutionCache:: ${kind}:: Number of loaderInvokes: ${statistics.loaderInvoke}`);
+            statistics.loaderInvoke = 0;
+            statistics.uniqueResolutions = 0;
+        }
+
         function clearPerDirectoryResolutions() {
             perDirectoryResolvedModuleNames.clear();
             nonRelativeModuleNameCache.clear();
@@ -279,6 +294,16 @@ namespace ts {
                     directoryWatchesOfFailedLookups.delete(path);
                     watcher.watcher.close();
                 }
+            });
+            // Report statistics::
+            resolutionStatisticsClear("module", moduleStatistics);
+            resolutionStatisticsClear("typeRef", typeRefStatistics);
+            resolutionHost.writeLog(`ResolutionCache:: Resolutions with failedLookups:: ${resolutionsWithFailedLookups.length}`);
+            function comapreResolution(a: [string, ResolutionWithFailedLookupLocations[]], b: [string, ResolutionWithFailedLookupLocations[]]): Comparison {
+                return compareValues(b[1].length, a[1].length);
+            }
+            sort(arrayFrom(resolvedFileToResolution.entries()), comapreResolution).forEach(([file, resolutions]) => {
+                resolutionHost.writeLog(`ResolutionCache:: ResolutionsToFile: ${file}:: ${resolutions.length}`);
             });
         }
 
@@ -323,12 +348,14 @@ namespace ts {
             shouldRetryResolution: (t: T) => boolean;
             reusedNames?: readonly string[];
             logChanges?: boolean;
+            statistics: ResolutionStatistics;
         }
         function resolveNamesWithLocalCache<T extends ResolutionWithFailedLookupLocations, R extends ResolutionWithResolvedFileName>({
             names, containingFile, redirectedReference,
             cache, perDirectoryCacheWithRedirects,
             loader, getResolutionWithResolvedFileName,
-            shouldRetryResolution, reusedNames, logChanges
+            shouldRetryResolution, reusedNames, logChanges,
+            statistics
         }: ResolveNamesWithLocalCacheInput<T, R>): (R | undefined)[] {
             const path = resolutionHost.toPath(containingFile);
             const resolutionsInFile = cache.get(path) || cache.set(path, createMap()).get(path)!;
@@ -366,6 +393,8 @@ namespace ts {
                     else {
                         resolution = loader(name, containingFile, compilerOptions, resolutionHost, redirectedReference);
                         perDirectoryResolution.set(name, resolution);
+                        statistics.loaderInvoke++;
+                        if (resolution.refCount === undefined) statistics.uniqueResolutions++;
                     }
                     resolutionsInFile.set(name, resolution);
                     watchFailedLookupLocationsOfExternalModuleResolutions(name, resolution, path, getResolutionWithResolvedFileName);
@@ -423,6 +452,7 @@ namespace ts {
                 loader: resolveTypeReferenceDirective,
                 getResolutionWithResolvedFileName: getResolvedTypeReferenceDirective,
                 shouldRetryResolution: resolution => resolution.resolvedTypeReferenceDirective === undefined,
+                statistics: typeRefStatistics
             });
         }
 
@@ -437,7 +467,8 @@ namespace ts {
                 getResolutionWithResolvedFileName: getResolvedModule,
                 shouldRetryResolution: resolution => !resolution.resolvedModule || !resolutionExtensionIsTSOrJson(resolution.resolvedModule.extension),
                 reusedNames,
-                logChanges: logChangesWhenResolvingModule
+                logChanges: logChangesWhenResolvingModule,
+                statistics: moduleStatistics
             });
         }
 
