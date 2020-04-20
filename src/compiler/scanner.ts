@@ -146,7 +146,6 @@ namespace ts {
         yield: SyntaxKind.YieldKeyword,
         async: SyntaxKind.AsyncKeyword,
         await: SyntaxKind.AwaitKeyword,
-        awaited: SyntaxKind.AwaitedKeyword,
         of: SyntaxKind.OfKeyword,
     };
 
@@ -308,14 +307,14 @@ namespace ts {
     /* @internal */ export function isUnicodeIdentifierStart(code: number, languageVersion: ScriptTarget | undefined) {
         return languageVersion! >= ScriptTarget.ES2015 ?
             lookupInUnicodeMap(code, unicodeESNextIdentifierStart) :
-            languageVersion! === ScriptTarget.ES5 ? lookupInUnicodeMap(code, unicodeES5IdentifierStart) :
+            languageVersion === ScriptTarget.ES5 ? lookupInUnicodeMap(code, unicodeES5IdentifierStart) :
                 lookupInUnicodeMap(code, unicodeES3IdentifierStart);
     }
 
     function isUnicodeIdentifierPart(code: number, languageVersion: ScriptTarget | undefined) {
         return languageVersion! >= ScriptTarget.ES2015 ?
             lookupInUnicodeMap(code, unicodeESNextIdentifierPart) :
-            languageVersion! === ScriptTarget.ES5 ? lookupInUnicodeMap(code, unicodeES5IdentifierPart) :
+            languageVersion === ScriptTarget.ES5 ? lookupInUnicodeMap(code, unicodeES5IdentifierPart) :
                 lookupInUnicodeMap(code, unicodeES3IdentifierPart);
     }
 
