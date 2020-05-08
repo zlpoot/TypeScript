@@ -121,7 +121,7 @@ namespace ts.refactor {
         const quotePreference = getQuotePreference(oldFile, preferences);
         const importsFromNewFile = createOldFileImportsFromNewFile(usage.oldFileImportsFromNewFile, newModuleName, useEs6ModuleSyntax, quotePreference);
         if (importsFromNewFile) {
-            insertImport(changes, oldFile, importsFromNewFile, /*blankLineBetween*/ true);
+            insertImports(changes, oldFile, importsFromNewFile, /*blankLineBetween*/ true);
         }
 
         deleteUnusedOldImports(oldFile, toMove.all, changes, usage.unusedImportsFromOldFile, checker);
@@ -533,6 +533,7 @@ namespace ts.refactor {
             case SyntaxKind.ImportEqualsDeclaration:
             case SyntaxKind.ImportSpecifier:
             case SyntaxKind.ImportClause:
+            case SyntaxKind.NamespaceImport:
                 return true;
             case SyntaxKind.VariableDeclaration:
                 return isVariableDeclarationInImport(decl as VariableDeclaration);
