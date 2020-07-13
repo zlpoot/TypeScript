@@ -433,13 +433,13 @@ namespace ts.server {
     export function forEachResolvedProjectReferenceProject<T>(
         project: ConfiguredProject,
         cb: (child: ConfiguredProject, configFileName: NormalizedPath) => T | undefined,
-        projectReferenceProjectLoadKind: ProjectReferenceProjectLoadKind.Find | ProjectReferenceProjectLoadKind.FindCreate
+        projectReferenceProjectLoadKind: ProjectReferenceProjectLoadKind.Find | ProjectReferenceProjectLoadKind.FindCreate,
     ): T | undefined;
     /*@internal*/
     export function forEachResolvedProjectReferenceProject<T>(
         project: ConfiguredProject,
         cb: (child: ConfiguredProject, configFileName: NormalizedPath) => T | undefined,
-        projectReferenceProjectLoadKind: ProjectReferenceProjectLoadKind.FindCreateLoad,
+        projectReferenceProjectLoadKind: ProjectReferenceProjectLoadKind,
         reason: string
     ): T | undefined;
     export function forEachResolvedProjectReferenceProject<T>(
@@ -2800,7 +2800,7 @@ namespace ts.server {
                             // reload from the disk
                             this.reloadConfiguredProject(project, reason);
                             // If this is solution, reload the project till the reloaded project contains the script info directly
-                            if (!project.containsScriptInfo(info) && project.isSolution()) {
+                            if (!project.containsScriptInfo(info) && project.isSolution() && !project.getCompilerOptions().disableReferencedProjectLoad) {
                                 forEachResolvedProjectReferenceProject(
                                     project,
                                     child => {
@@ -2810,7 +2810,7 @@ namespace ts.server {
                                         }
                                         return projectContainsInfoDirectly(child, info);
                                     },
-                                    ProjectReferenceProjectLoadKind.FindCreate
+                                    project.getCompilerOptions().disableReferencedProjectLoad ? ProjectReferenceProjectLoadKind.Find : ProjectReferenceProjectLoadKind.FindCreate
                                 );
                             }
                         }
@@ -2913,7 +2913,7 @@ namespace ts.server {
                         const info = this.getScriptInfo(fileName);
                         return info && projectContainsInfoDirectly(child, info) ? child : undefined;
                     },
-                    ProjectReferenceProjectLoadKind.FindCreateLoad,
+                    configuredProject.getCompilerOptions().disableReferencedProjectLoad ? ProjectReferenceProjectLoadKind.Find : ProjectReferenceProjectLoadKind.FindCreateLoad,
                     `Creating project referenced in solution ${configuredProject.projectName} to find possible configured project for original file: ${originalFileInfo.fileName}${location !== originalLocation ? " for location: " + location.fileName : ""}`
                 );
                 if (!configuredProject) return undefined;
@@ -3014,7 +3014,7 @@ namespace ts.server {
                                     return child;
                                 }
                             },
-                            ProjectReferenceProjectLoadKind.FindCreateLoad,
+                            project.getCompilerOptions().disableReferencedProjectLoad ? ProjectReferenceProjectLoadKind.Find : ProjectReferenceProjectLoadKind.FindCreateLoad,
                             `Creating project referenced in solution ${project.projectName} to find possible configured project for ${info.fileName} to open`
                         );
                     }
@@ -3118,7 +3118,7 @@ namespace ts.server {
             forEachResolvedProjectReferenceProject(
                 project,
                 child => this.ensureProjectChildren(child, seenProjects),
-                ProjectReferenceProjectLoadKind.FindCreateLoad,
+                project.getCompilerOptions().disableReferencedProjectLoad ? ProjectReferenceProjectLoadKind.Find : ProjectReferenceProjectLoadKind.FindCreateLoad,
                 `Creating project for reference of project: ${project.projectName}`
             );
         }
